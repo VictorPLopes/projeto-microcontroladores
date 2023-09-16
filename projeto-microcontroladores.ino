@@ -35,7 +35,7 @@ Piracicaba, 2023
 
 // VARIÁVEIS GLOBAIS
 
-LiquidCrystal_I2C lcd(0x3f, 16, 2); // Criação do objeto lcd da classe LiquidCrystal_I2C
+LiquidCrystal_I2C lcd(0x00, 16, 2); // Criação do objeto lcd da classe LiquidCrystal_I2C ENDEREÇO PROVISÓRIO, MUDAR ASSIM QUE O ENDEREÇO FOR DEFINIDO
 
 byte modoSelecionado = 0; // 0 = Temperatura, 1 = Umidade, 2 = Pressão
 
