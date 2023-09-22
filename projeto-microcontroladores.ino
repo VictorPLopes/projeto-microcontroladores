@@ -23,27 +23,36 @@ Piracicaba, 2023
 
 #include <Wire.h> // Biblioteca para comunicação I2C
 #include <LiquidCrystal_I2C.h> // Biblioteca para controle do LCD
+#include <Adafruit_Sensor.h> // Biblioteca para sensores
+#include <DHT_U.h> // Biblioteca para sensor DHT
+#include <DHT.h> // Biblioteca para sensor DHT
+
 
 // DEFINIÇÕES
 
 // Diretivas define para atribuição dos nomes dos pinos de E/S
-#define BOTAO 5
+#define BOTAO 5 // Pino do botão de seleção
+
+#define DHT_PINO 4 // Pino do sensor DHT11
+
 
 // Filtro global para o botão de seleção de modo
-#define FILTRO 100
+#define FILTRO 500
 
 
 // VARIÁVEIS GLOBAIS
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // Criação do objeto lcd da classe LiquidCrystal_I2C - Endereço I2C do LCD: 0x27 | Número de colunas: 16 | Número de linhas: 2
 
-byte modoSelecionado = 0; // 0 = Temperatura, 1 = Umidade, 2 = Pressão, 3 = Altitude
+DHT dht(DHT_PINO, DHT11); // Criação do objeto dht da classe DHT - Pino do DHT: 4 | Tipo: DHT11
+
+byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão, 3 = Altitude
 
 unsigned long tUltInt0 = 0; // Variável que armazena o tempo da última interrupção do botão de seleção de modo
 
-float temperatura = 25.38; // Temperatura em graus Celsius - valor temporário de teste
-float umidade = 50.78; // Umidade relativa do ar em % - valor temporário de teste
-float pressao = 1013.25; // Pressão atmosférica em hPa - valor temporário de teste
+float temperatura = 0; // Temperatura em graus Celsius - valor temporário de teste
+float umidade; // Umidade relativa do ar em %
+float pressao = 0; // Pressão atmosférica em hPa - valor temporário de teste
 float altitude = 0; // Altitude em metros - valor temporário de teste
 
 byte graus[8] = { // Vetor de bytes que armazena o caractere de graus (°) para ser escrito no LCD
@@ -60,27 +69,65 @@ byte graus[8] = { // Vetor de bytes que armazena o caractere de graus (°) para 
 
 // FUNÇÕES
 
+// Função que mede a umidade usando o sensor DHT11
+void medeUmidade() {
+    float umiAux = dht.readHumidity(); // Lê a umidade relativa do ar em % do sensor DHT11
+    float tempAux = dht.readTemperature(); // Lê a temperatura em °C do sensor DHT11
+
+    if (isnan(umiAux) || isnan(tempAux)) { // Verifica se houve erro na leitura do sensor DHT11
+        Serial.println("Erro na leitura do DHT11");
+        dht.begin(); // Reinicia o sensor DHT11
+        delay(100); // Delay de 100 ms
+        medeUmidade(); // Chama a função novamente
+    }
+    umidade = umiAux; // Atualiza o valor da umidade
+    Serial.print("Umidade (Ur%) = "); // Imprime o valor da umidade no monitor serial
+    Serial.println(umidade);
+    Serial.print("Temperatura - DHT11 (°C) = "); // Imprime o valor da temperatura no monitor serial
+    Serial.println(tempAux);
+}
+
+// Função que mede a pressão usando o sensor BMP280
+void medePressao() {
+    // Implementar
+}
+
+// Função que mede a altitude usando o sensor BMP280
+void medeAltitude() {
+    medePressao();
+    
+    // Implementar
+}
+
+// Função que mede a temperatura usando o sensor LM35
+void medeTemperatura() {
+    // Implementar
+}
+
 // Função acionada pela interrupção do botão de seleção de modo que alterna entre os modos de operação
 void selecionaModo() {
     modoSelecionado = (modoSelecionado + 1) % 4; // Incrementa o modo selecionado e faz o módulo 4 para que o valor fique entre 0 e 3
 }
 
+// Função que filtra o botão de seleção de modo
 void selecionaModoFiltro() {
-    if ((millis() - tUltInt0) > FILTRO){
-        selecionaModo();
-        tUltInt0 = millis();
+    if ((millis() - tUltInt0) > FILTRO){ // Verifica se o tempo desde a última interrupção é maior que o filtro
+        selecionaModo(); // Alterna entre os modos de operação
+//      escreveLCD();
+        tUltInt0 = millis(); // Atualiza o tempo da última interrupção
     }
 }
 
 // Função que escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
 void escreveLCD() {
     lcd.clear(); // Limpa o LCD
-    switch (modoSelecionado) {
+    switch (modoSelecionado) { // Verifica o modo selecionado
     case 0: // Modo de temperatura
         lcd.setCursor(2, 0);
         lcd.print("Temperatura");
         lcd.setCursor(4, 1);
         lcd.print("T=");
+        medeTemperatura(); // Atualiza o valor da temperatura
         lcd.print(temperatura);
         lcd.write(0);
         lcd.print("C");
@@ -90,6 +137,7 @@ void escreveLCD() {
         lcd.print("Umidade");
         lcd.setCursor(4, 1);
         lcd.print("Ur%=");
+        medeUmidade(); // Atualiza o valor da umidade
         lcd.print(umidade);
         break;
     case 2: // Modo de pressão
@@ -97,6 +145,7 @@ void escreveLCD() {
         lcd.print("Pressao");
         lcd.setCursor(3, 1);
         lcd.print("P=");
+        medePressao(); // Atualiza o valor da pressão
         lcd.print(pressao);
         lcd.print("hPa");
         break;
@@ -105,15 +154,23 @@ void escreveLCD() {
         lcd.print("Altitude");
         lcd.setCursor(4, 1);
         lcd.print("A=");
+        medeAltitude(); // Atualiza o valor da altitude
         lcd.print(altitude);
         lcd.print("m");
         break;
     }
 }
 
+// Função que inicializa o ESP32
 void setup() {
     // Configuração dos pinos como entrada ou saída
     pinMode(BOTAO, INPUT_PULLUP);
+
+    // Inicializa a USART
+    Serial.begin(9600);
+
+    // Configuração do sensor DHT11
+    dht.begin();
 
     // Configuração do display LCD
     lcd.init(); // Inicialização do LCD
@@ -125,7 +182,8 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(BOTAO), selecionaModoFiltro, FALLING);
 }
 
+// Função que executa o loop principal do programa
 void loop() {
-    escreveLCD();
-    delay(1000);
+    escreveLCD(); // Escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
+    delay(1000); // Delay de 1 segundo
 }
