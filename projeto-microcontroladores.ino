@@ -71,6 +71,7 @@ byte graus[8] = { // Vetor de bytes que armazena o caractere de graus (°) para 
 
 // Função que mede a umidade usando o sensor DHT11
 void medeUmidade() {
+    /*
     float umiAux = dht.readHumidity(); // Lê a umidade relativa do ar em % do sensor DHT11
     float tempAux = dht.readTemperature(); // Lê a temperatura em °C do sensor DHT11
 
@@ -81,6 +82,17 @@ void medeUmidade() {
         medeUmidade(); // Chama a função novamente
     }
     umidade = umiAux; // Atualiza o valor da umidade
+    */
+   
+    float umiAux; // Variável que armazena a umidade relativa do ar em % do sensor DHT11
+    float tempAux; // Variável que armazena a temperatura em °C do sensor DHT11
+    
+    while (isnan(umiAux = dht.readHumidity()) || isnan(tempAux = dht.readTemperature())) { // Verifica se houve erro na leitura do sensor DHT11
+        Serial.println("Erro na leitura do DHT11");
+        dht.begin(); // Reinicia o sensor DHT11
+        delay(100); // Delay de 100 ms
+    }
+
     Serial.print("Umidade (Ur%) = "); // Imprime o valor da umidade no monitor serial
     Serial.println(umidade);
     Serial.print("Temperatura - DHT11 (°C) = "); // Imprime o valor da temperatura no monitor serial
