@@ -118,14 +118,8 @@ void medeTemperatura() {
 
 // Função acionada pela interrupção do botão de seleção de modo que alterna entre os modos de operação
 void selecionaModo() {
-    modoSelecionado = (modoSelecionado + 1) % 4; // Incrementa o modo selecionado e faz o módulo 4 para que o valor fique entre 0 e 3
-}
-
-// Função que filtra o botão de seleção de modo
-void selecionaModoFiltro() {
     if ((millis() - tUltInt0) > FILTRO){ // Verifica se o tempo desde a última interrupção é maior que o filtro
-        selecionaModo(); // Alterna entre os modos de operação
-//      escreveLCD();
+        modoSelecionado = (modoSelecionado + 1) % 4; // Incrementa o modo selecionado e faz o módulo 4 para que o valor fique entre 0 e 3
         tUltInt0 = millis(); // Atualiza o tempo da última interrupção
     }
 }
@@ -191,7 +185,7 @@ void setup() {
     lcd.setCursor(0, 0); // Posiciona o cursor na primeira coluna da primeira linha
 
     // Configuração da interrupção do botão de seleção de modo
-    attachInterrupt(digitalPinToInterrupt(BOTAO), selecionaModoFiltro, FALLING);
+    attachInterrupt(digitalPinToInterrupt(BOTAO), selecionaModo, FALLING);
 }
 
 // Função que executa o loop principal do programa
