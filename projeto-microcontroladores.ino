@@ -76,11 +76,12 @@ void medeUmidade() {
     float umiAux = dht.readHumidity(); // Lê a umidade relativa do ar em % do sensor DHT11
     float tempAux = dht.readTemperature(); // Lê a temperatura em °C do sensor DHT11
 
-    if (isnan(umiAux) || isnan(tempAux)) { // Verifica se houve erro na leitura do sensor DHT11
+    while (isnan(umiAux) || isnan(tempAux)) { // Verifica se houve erro na leitura do sensor DHT11
         Serial.println("Erro na leitura do DHT11");
         dht.begin(); // Reinicia o sensor DHT11
         delay(100); // Delay de 100 ms
-        medeUmidade(); // Chama a função novamente
+        umiAux = dht.readHumidity(); // Tenta ler a umidade novamente
+        tempAux = dht.readTemperature(); // Tenta ler a temperatura novamente
     }
     umidade = umiAux; // Atualiza o valor da umidade
 
