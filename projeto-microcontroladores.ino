@@ -31,9 +31,11 @@ Piracicaba, 2023
 // DEFINIÇÕES
 
 // Diretivas define para atribuição dos nomes dos pinos de E/S
-#define BOTAO 5 // Pino do botão de seleção
+#define BOTAO 5 // Pino do botão de seleção no ESP32 (D5 - GPIO5)
+//#define BOTAO 14 // Pino do botão de seleção no ESP8266 (D5 - GPIO14)
 
-#define DHT_PINO 4 // Pino do sensor DHT11
+#define DHT_PINO 4 // Pino do sensor DHT11 no ESP32 (D4 - GPIO4)
+//#define DHT_PINO 2 // Pino do sensor DHT11 no ESP8266 (D4 - GPIO2)
 
 
 // Filtro global para o botão de seleção de modo
@@ -51,7 +53,7 @@ byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão, 3 = Alt
 unsigned long tUltInt0 = 0; // Variável que armazena o tempo da última interrupção do botão de seleção de modo
 
 float temperatura = 0; // Temperatura em graus Celsius - valor temporário de teste
-float umidade; // Umidade relativa do ar em %
+float umidade = 0; // Umidade relativa do ar em %
 float pressao = 0; // Pressão atmosférica em hPa - valor temporário de teste
 float altitude = 0; // Altitude em metros - valor temporário de teste
 
@@ -71,7 +73,6 @@ byte graus[8] = { // Vetor de bytes que armazena o caractere de graus (°) para 
 
 // Função que mede a umidade usando o sensor DHT11
 void medeUmidade() {
-    /*
     float umiAux = dht.readHumidity(); // Lê a umidade relativa do ar em % do sensor DHT11
     float tempAux = dht.readTemperature(); // Lê a temperatura em °C do sensor DHT11
 
@@ -82,16 +83,6 @@ void medeUmidade() {
         medeUmidade(); // Chama a função novamente
     }
     umidade = umiAux; // Atualiza o valor da umidade
-    */
-   
-    float umiAux; // Variável que armazena a umidade relativa do ar em % do sensor DHT11
-    float tempAux; // Variável que armazena a temperatura em °C do sensor DHT11
-    
-    while (isnan(umiAux = dht.readHumidity()) || isnan(tempAux = dht.readTemperature())) { // Verifica se houve erro na leitura do sensor DHT11
-        Serial.println("Erro na leitura do DHT11");
-        dht.begin(); // Reinicia o sensor DHT11
-        delay(100); // Delay de 100 ms
-    }
 
     Serial.print("Umidade (Ur%) = "); // Imprime o valor da umidade no monitor serial
     Serial.println(umidade);
@@ -116,16 +107,13 @@ void medeTemperatura() {
     // Implementar
 }
 
+// Código necessário para gravar a interrupção na memória ram do ESP8266
+void ICACHE_RAM_ATTR selecionaModo();
+
 // Função acionada pela interrupção do botão de seleção de modo que alterna entre os modos de operação
 void selecionaModo() {
-    modoSelecionado = (modoSelecionado + 1) % 4; // Incrementa o modo selecionado e faz o módulo 4 para que o valor fique entre 0 e 3
-}
-
-// Função que filtra o botão de seleção de modo
-void selecionaModoFiltro() {
     if ((millis() - tUltInt0) > FILTRO){ // Verifica se o tempo desde a última interrupção é maior que o filtro
-        selecionaModo(); // Alterna entre os modos de operação
-//      escreveLCD();
+        modoSelecionado = (modoSelecionado + 1) % 4; // Incrementa o modo selecionado e faz o módulo 4 para que o valor fique entre 0 e 3
         tUltInt0 = millis(); // Atualiza o tempo da última interrupção
     }
 }
@@ -191,7 +179,7 @@ void setup() {
     lcd.setCursor(0, 0); // Posiciona o cursor na primeira coluna da primeira linha
 
     // Configuração da interrupção do botão de seleção de modo
-    attachInterrupt(digitalPinToInterrupt(BOTAO), selecionaModoFiltro, FALLING);
+    attachInterrupt(digitalPinToInterrupt(BOTAO), selecionaModo, FALLING);
 }
 
 // Função que executa o loop principal do programa
