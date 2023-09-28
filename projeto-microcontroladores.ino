@@ -78,6 +78,9 @@ void medeUmidade() {
 
     while (isnan(umiAux) || isnan(tempAux)) { // Verifica se houve erro na leitura do sensor DHT11
         Serial.println("Erro na leitura do DHT11");
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Erro no DHT11!");
         dht.begin(); // Reinicia o sensor DHT11
         delay(100); // Delay de 100 ms
         umiAux = dht.readHumidity(); // Tenta ler a umidade novamente
