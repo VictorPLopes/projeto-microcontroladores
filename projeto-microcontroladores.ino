@@ -55,7 +55,7 @@ LiquidCrystal_I2C lcd(LCD_ENDERECO, 16, 2); // Criação do objeto lcd da classe
 
 DHT dht(DHT_PINO, DHT11); // Criação do objeto dht da classe DHT - Pino do DHT: 4 | Tipo: DHT11
 
-Adafruit_BMP280 bmp;
+Adafruit_BMP280 bmp; // Criação do objeto bmp da classe Adafruit_BMP280
 
 volatile byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão, 3 = Altitude
 
@@ -223,7 +223,7 @@ void setup() {
     dht.begin();
     
     // Configuração do sensor BMP280
-    while(!bmp.begin(BMP280_ADDRESS_ALT)) {
+    while(!bmp.begin(BMP280_ADDRESS_ALT)) { // Verifica se o sensor BMP280 foi encontrado
         Serial.println("Sensor não localizado");
         lcd.setCursor(0, 0);
         lcd.print("Erro no BMP280!");
