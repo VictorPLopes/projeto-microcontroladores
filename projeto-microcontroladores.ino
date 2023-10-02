@@ -135,7 +135,7 @@ void medePressaoAltitude() {
     pressao = pressaoAux; // Atualiza o valor da pressão
     altitude = altitudeAux; // Atualiza o valor da altitude
 
-    Serial.print("Pressão (atm) = "); // Imprime o valor da pressão no monitor serial
+    Serial.print("Pressão (hPa) = "); // Imprime o valor da pressão no monitor serial
     Serial.println(pressao);
     Serial.print("Altitude - BMP (m) = "); // Imprime o valor da altitude no monitor serial
     Serial.println(altitudeAux);
