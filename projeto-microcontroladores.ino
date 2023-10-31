@@ -34,6 +34,7 @@ Piracicaba, 2023
 #define BOTAO 5 // Pino do botão de seleção no ESP32 (D5 - GPIO5)
 //#define BOTAO 14 // Pino do botão de seleção no ESP8266 (D5 - GPIO14)
 #define DHT_PINO 4 // Pino do sensor DHT11 no ESP32 (D4 - GPIO4)
+#define LM35_PINO 35 // Pino de leitura analógica do sensor LM35
 //#define DHT_PINO 2 // Pino do sensor DHT11 no ESP8266 (D4 - GPIO2)
 #define LCD_ENDERECO 0x27 // Endereço I2C padrão do LCD
 
@@ -61,7 +62,7 @@ volatile byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão
 
 unsigned long tUltInt0 = 0; // Variável que armazena o tempo da última interrupção do botão de seleção de modo
 
-float temperatura = 0; // Temperatura em graus Celsius - valor temporário de teste
+double temperatura = 0; // Temperatura em graus Celsius - valor temporário de teste
 float umidade = 0; // Umidade relativa do ar em %
 float pressao = 0; // Pressão atmosférica em hPa - valor temporário de teste
 float altitude = 0; // Altitude em metros - valor temporário de teste
@@ -127,7 +128,7 @@ void medePressaoAltitude() {
         lcd.print("Erro no BMP280!");
         bmp.begin(BMP280_ADDRESS_ALT); // Reinicia o sensor BMP280
         delay(100); // Delay de 100 ms
-        pressaoAux = bmp.readPressure(); // Tenta ler a pressão novamente
+        pressaoAux = bmp.readPressure() / 100; // Tenta ler a pressão novamente
         altitudeAux = bmp.readAltitude(pressaoMar);
         tempAux = bmp.readTemperature(); // Tenta ler a temperatura novamente
     }
@@ -143,9 +144,49 @@ void medePressaoAltitude() {
     Serial.println(tempAux);
 }
 
+// Fução que converte a leitura analógica em tensão
+double calculaTensao(double leitura) {
+    return 0.00080488*leitura + 0.13169092; // Ajuste linear
+    // return (-1)*0.00000006*(leitura*leitura) + 0.00102569*leitura + 0.02256359; // Ajuste com polinômio de 2º Grau
+}
+
 // Função que mede a temperatura usando o sensor LM35
 void medeTemperatura() {
-    // Implementar
+    // Tensão medida nos diodos
+    float vDiodos = 0.48; // VALOR PROVISÓRIO
+    // Número de medidas consecutivas
+    unsigned int nMedidas = 20;
+    // Valor cumulativo das leituras
+    unsigned int n = 0;
+    for (int i = 0; i < nMedidas; i++) {
+        n += analogRead(LM35_PINO);
+        delay(20);
+    }
+    
+    // Media das leituras
+    double nMedia = n/nMedidas; // Valor médio das leituras
+    Serial.print("Valor de n (leitura analógica):"); // Imprime o valor de n no monitor serial
+    Serial.println(nMedia);
+
+    // Calcula a tensão
+    double tensao = calculaTensao(nMedia); // Calcula a tensão a partir do valor médio das leituras, considerando o ajuste linear
+    Serial.print("Tensão (leitura analógica):"); // Imprime o valor da tensão no monitor serial
+    Serial.println(tensao);
+
+    // Calcula a temperatura
+    double tempAux = (tensao - vDiodos) / 0.01; // Tensão de saída do LM35 = 10 mV/°C
+    Serial.print("Temperatura - LM35 (°C) = "); // Imprime o valor da temperatura no monitor serial
+    Serial.println(tempAux);
+
+
+    // Se a nova temperatura for consideravelmente diferente da anterior, atualiza seu valor
+    if ((-0.2 > (temperatura - tempAux)) || ((temperatura - tempAux) > 0.2))
+        temperatura = tempAux;
+    // Senão, tenta de novo
+    else {
+        delay(100);
+        medeTemperatura();
+    }
 }
 
 // Código necessário para gravar a interrupção na memória ram do ESP8266
