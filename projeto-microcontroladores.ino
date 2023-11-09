@@ -47,7 +47,8 @@ Piracicaba, 2023
 
 
 // CONSTANTES
-const float pressaoMar = 1013.25; // Pressão atmosférica ao nível do mar em hPa
+const float pressaoMar = 1013.25; // Pressão atmosférica ao nível do mar em 
+const float vDiodosGlobal = 0.0; // Tensão nos diodos do ESP32
 
 
 // VARIÁVEIS GLOBAIS
@@ -151,13 +152,9 @@ double calculaTensao(double leitura) {
 }
 
 // Função que mede a temperatura usando o sensor LM35
-void medeTemperatura() {
-    // Tensão medida nos diodos
-    float vDiodos = 0.48; // VALOR PROVISÓRIO
-    // Número de medidas consecutivas
-    unsigned int nMedidas = 20;
+void medeTemperatura(float vDiodos, int nMedidas) { // vDiodos é a tensão nos diodos do ESP32; nMedidas é o número de leituras analógicas a serem feitas
     // Valor cumulativo das leituras
-    unsigned int n = 0;
+    int n = 0;
     for (int i = 0; i < nMedidas; i++) {
         n += analogRead(LM35_PINO);
         delay(20);
@@ -165,6 +162,7 @@ void medeTemperatura() {
     
     // Media das leituras
     double nMedia = n/nMedidas; // Valor médio das leituras
+
     Serial.print("Valor de n (leitura analógica):"); // Imprime o valor de n no monitor serial
     Serial.println(nMedia);
 
@@ -181,12 +179,7 @@ void medeTemperatura() {
 
     // Se a nova temperatura for consideravelmente diferente da anterior, atualiza seu valor
     if ((-0.2 > (temperatura - tempAux)) || ((temperatura - tempAux) > 0.2))
-        temperatura = tempAux;
-    // Senão, tenta de novo
-    else {
-        delay(100);
-        medeTemperatura();
-    }
+        temperatura = tempAux; // Atualiza o valor da temperatura
 }
 
 // Código necessário para gravar a interrupção na memória ram do ESP8266
@@ -210,7 +203,7 @@ void escreveLCD() {
         lcd.print("Temperatura");
         lcd.setCursor(4, 1);
         lcd.print("T=");
-        medeTemperatura(); // Atualiza o valor da temperatura
+        medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
         lcd.print(temperatura);
         lcd.write(POS_GRAUS); // Escreve o caractere de graus (°) no LCD
         lcd.print("C");
