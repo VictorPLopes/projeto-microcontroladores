@@ -27,6 +27,8 @@ Piracicaba, 2023
 #include <DHT_U.h> // Biblioteca para sensor DHT
 #include <DHT.h> // Biblioteca para sensor DHT
 #include <Adafruit_BMP280.h> //Biblioteca para sensor BMP
+#include <WiFi.h> //Biblioteca para a conexão WiFi
+#include "NTPClient.h" //Biblioteca para TimeStamp
 
 // DEFINIÇÕES
 
@@ -36,7 +38,10 @@ Piracicaba, 2023
 #define DHT_PINO 4 // Pino do sensor DHT11 no ESP32 (D4 - GPIO4)
 #define LM35_PINO 35 // Pino de leitura analógica do sensor LM35
 //#define DHT_PINO 2 // Pino do sensor DHT11 no ESP8266 (D4 - GPIO2)
+
 #define LCD_ENDERECO 0x27 // Endereço I2C padrão do LCD
+
+#define ledWiFi 23 //Led que indica se a conexão WiFi foi feita
 
 #define POS_GRAUS 0 // Posição do caractere de graus (°) no LCD
 #define POS_ATIL 1 // Posição do caractere de a com til (ã) no LCD
@@ -48,10 +53,15 @@ Piracicaba, 2023
 
 // CONSTANTES
 const float pressaoMar = 1013.25; // Pressão atmosférica ao nível do mar em 
-const float vDiodosGlobal = 0.0; // Tensão nos diodos do ESP32
-
+const float vDiodosGlobal = 0.45; // Tensão nos diodos do ESP32
+const char* ssid = "Senha: 12345678";
+const char* password = "12345678";
 
 // VARIÁVEIS GLOBAIS
+
+//Configuração para acessar o horário no servidor utilizando o protocolo NTP
+WiFiUDP ntpUDP;                     
+NTPClient timeClient(ntpUDP,"pool.ntp.org");  //pool.ntp.org é o endereço do servidor
 
 LiquidCrystal_I2C lcd(LCD_ENDERECO, 16, 2); // Criação do objeto lcd da classe LiquidCrystal_I2C - Endereço I2C do LCD: 0x27 | Número de colunas: 16 | Número de linhas: 2
 
@@ -62,6 +72,8 @@ Adafruit_BMP280 bmp; // Criação do objeto bmp da classe Adafruit_BMP280
 volatile byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão, 3 = Altitude
 
 unsigned long tUltInt0 = 0; // Variável que armazena o tempo da última interrupção do botão de seleção de modo
+
+unsigned long timeStamp=0; //Variável para armazenar a epoca
 
 double temperatura = 0; // Temperatura em graus Celsius - valor temporário de teste
 float umidade = 0; // Umidade relativa do ar em %
@@ -239,6 +251,53 @@ void escreveLCD() {
     }
 }
 
+
+//Função para inicializar a rede WiFi
+void iniciaWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  Serial.print("Conectando na rede WiFi ..");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print('.');
+    delay(1000);
+  }
+  Serial.println(WiFi.localIP());
+  digitalWrite(ledWiFi, HIGH);
+}
+
+//Verifica se o esp32 está conectado na rede WiFi
+void checaWiFi() {
+  if ((WiFi.status() != WL_CONNECTED)) {
+    digitalWrite(ledWiFi, LOW);
+    Serial.println("Reconectando na rede WiFi...");
+    WiFi.disconnect();
+    iniciaWiFi();
+  }
+}
+void checaTimeStamp(){
+  timeClient.update();                 // Obtém o horário do servidor NTP
+  timeStamp=timeClient.getEpochTime(); // Quando for converter o timeStamp para data e horário no Python, precisa somar 10800 para ajustar o fuso
+  Serial.print("HORARIO: ");
+  Serial.println(timeClient.getFormattedTime());
+
+  Serial.print("HORA: ");
+  Serial.println(timeClient.getHours());
+
+  Serial.print("MINUTOS: ");
+  Serial.println(timeClient.getMinutes());
+
+  Serial.print("SEGUNDOS: ");
+  Serial.println(timeClient.getSeconds());
+
+  Serial.print("DIA DA SEMANA (0=domingo): ");
+  Serial.println(timeClient.getDay());
+
+  Serial.print("Epoca (Segundos desde 01/01/1970): ");
+  Serial.println(timeStamp);
+
+  Serial.println();
+}
+
 // Função que inicializa o ESP32
 void setup() {
     // Configuração dos pinos como entrada ou saída
@@ -246,6 +305,17 @@ void setup() {
 
     // Inicializa a USART
     Serial.begin(9600);
+
+    // Configuração da conexão WiFi
+    pinMode(ledWiFi, OUTPUT);
+    digitalWrite(ledWiFi, LOW);
+
+    //Inicializa conexão servidor NTP
+    timeClient.begin();
+    timeClient.setTimeOffset(-10800); //Correção do fuso horário para o horário de Brasilia
+  
+    //Inicializa WiFi
+    iniciaWiFi();
 
     // Configuração do display LCD
     lcd.init(); // Inicialização do LCD
@@ -272,6 +342,7 @@ void setup() {
 
 // Função que executa o loop principal do programa
 void loop() {
+  checaWiFi();
     /*
     if (!((millis() - tUltInt0) % 15000)) // Verifica se o tempo desde a última interrupção é múltiplo de 15 segundos
         selecionaModo(); // Se sim, chama a função de seleção de modo (para que o modo seja alterado automaticamente a cada 15 segundos)
