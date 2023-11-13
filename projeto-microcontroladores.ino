@@ -29,6 +29,7 @@ Piracicaba, 2023
 #include <Adafruit_BMP280.h> //Biblioteca para sensor BMP
 #include <WiFi.h> //Biblioteca para a conexão WiFi
 #include <NTPClient.h> //Biblioteca para TimeStamp
+#include <time.h> //Biblioteca para TimeStamp
 
 // DEFINIÇÕES
 
@@ -132,7 +133,7 @@ void medeUmidade() {
 
 // Função que mede a pressão e altitude usando o sensor BMP280
 void medePressaoAltitude() {
-    float pressaoAux = bmp.readPressure(); // Lê a pressão atmosférica em hPa do sensor BMP280
+    float pressaoAux = bmp.readPressure()/100.0; // Lê a pressão atmosférica em hPa do sensor BMP280
     float altitudeAux = bmp.readAltitude(pressaoMar); // Lê a altitude em metros do sensor BMP280
     float tempAux = bmp.readTemperature(); // Lê a temperatura em °C do sensor BMP280
 
@@ -143,7 +144,7 @@ void medePressaoAltitude() {
         lcd.print("Erro no BMP280!");
         bmp.begin(BMP280_ADDRESS_ALT); // Reinicia o sensor BMP280
         delay(100); // Delay de 100 ms
-        pressaoAux = bmp.readPressure() / 100; // Tenta ler a pressão novamente
+        pressaoAux = bmp.readPressure()/100.0; // Tenta ler a pressão novamente
         altitudeAux = bmp.readAltitude(pressaoMar);
         tempAux = bmp.readTemperature(); // Tenta ler a temperatura novamente
     }
@@ -210,45 +211,46 @@ void selecionaModo() {
 
 // Função que escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
 void escreveLCD() {
-    lcd.clear(); // Limpa o LCD
+    //lcd.clear(); // Limpa o LCD
     switch (modoSelecionado) { // Verifica o modo selecionado
     case 0: // Modo de temperatura
-        lcd.setCursor(2, 0);
-        lcd.print("Temperatura");
-        lcd.setCursor(4, 1);
-        lcd.print("T=");
+        lcd.setCursor(0, 0);
+        lcd.print("  Temperatura   ");
+        lcd.setCursor(0, 1);
+        lcd.print("   T=");
         medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
         lcd.print(temperatura);
         lcd.write(POS_GRAUS); // Escreve o caractere de graus (°) no LCD
-        lcd.print("C");
+        lcd.print("C   ");
         break;
     case 1: // Modo de umidade
-        lcd.setCursor(4, 0);
-        lcd.print("Umidade");
-        lcd.setCursor(3, 1);
-        lcd.print("Ur%=");
+        lcd.setCursor(0, 0);
+        lcd.print("    Umidade     ");
+        lcd.setCursor(0, 1);
+        lcd.print("   Ur%=");
         medeUmidade(); // Atualiza o valor da umidade
         lcd.print(umidade);
+        lcd.print("    ");
         break;
     case 2: // Modo de pressão
-        lcd.setCursor(4, 0);
-        lcd.print("Press");
+        lcd.setCursor(0, 0);
+        lcd.print("    Press");
         lcd.write(POS_ATIL); // Escreve o caractere de a com til (ã) no LCD
-        lcd.print("o");
-        lcd.setCursor(1, 1);
-        lcd.print("P=");
+        lcd.print("o     ");
+        lcd.setCursor(0, 1);
+        lcd.print("  P=");
         medePressaoAltitude(); // Atualiza o valor da pressão
         lcd.print(pressao);
-        lcd.print("hPa");
+        lcd.print("hPa ");
         break;
     default: // Modo de altitude
-        lcd.setCursor(4, 0);
-        lcd.print("Altitude");
-        lcd.setCursor(3, 1);
-        lcd.print("A=");
+        lcd.setCursor(0, 0);
+        lcd.print("    Altitude    ");
+        lcd.setCursor(0, 1);
+        lcd.print("   A=");
         medePressaoAltitude(); // Atualiza o valor da altitude
         lcd.print(altitude);
-        lcd.print("m");
+        lcd.print("m    ");
         break;
     }
 }
@@ -267,7 +269,7 @@ void iniciaWiFi() {
     digitalWrite(LED_WIFI, HIGH);
 }
 
-//Verifica se o esp32 está conectado na rede WiFi
+// Verifica se o ESP32 está conectado na rede WiFi
 void checaWiFi() {
     if (WiFi.status() != WL_CONNECTED) {
         digitalWrite(LED_WIFI, LOW);
@@ -277,11 +279,18 @@ void checaWiFi() {
     }
 }
 
-//Função para checar o horário no servidor NTP
+// Função que converte de epoch para DD/MM/AAAA
+String epochToDDMMYYYY(unsigned long epoch, int fuso) {
+    unsigned long dataFuso = epoch + fuso; // Soma o fuso horário em segundos ao epoch
+    struct tm *ptm = gmtime((time_t *)&dataFuso); // Converte o epoch para a struct tm
+    return String(ptm->tm_mday) + "/" + String(ptm->tm_mon + 1) + "/" + String(ptm->tm_year + 1900); // Retorna a data no formato DD/MM/AAAA
+}
+
+// Função para checar o horário no servidor NTP
 void checaTimeStamp() {
     timeClient.update(); // Obtém o horário do servidor NTP
     timeStamp = timeClient.getEpochTime(); // Quando for converter o timeStamp para data e horário no Python, precisa somar 10800 para ajustar o fuso
-    
+
     Serial.print("HORARIO: ");
     Serial.println(timeClient.getFormattedTime());
 
@@ -293,6 +302,9 @@ void checaTimeStamp() {
 
     Serial.print("SEGUNDOS: ");
     Serial.println(timeClient.getSeconds());
+
+    Serial.print("DATA: ");
+    Serial.println(epochToDDMMYYYY(timeStamp, gmt_menos3));
 
     Serial.print("DIA DA SEMANA: ");
     byte dia = timeClient.getDay();
@@ -321,7 +333,8 @@ void checaTimeStamp() {
     }
 
     Serial.print("Epoca (Segundos desde 01/01/1970): ");
-    Serial.println(timeStamp+"\n");
+    Serial.println(timeStamp);
+    Serial.println();
 }
 
 // Função que inicializa o ESP32
@@ -337,14 +350,15 @@ void setup() {
     pinMode(LED_WIFI, OUTPUT);
     digitalWrite(LED_WIFI, LOW);
 
+    //Inicializa WiFi
+    Serial.println("Inicializando WiFi...");
+    iniciaWiFi();
+
     //Inicializa conexão servidor NTP
     Serial.println("Inicializando conexão com servidor NTP...");
     timeClient.begin();
     timeClient.setTimeOffset(gmt_menos3); //Correção do fuso horário para o horário de Brasilia
   
-    //Inicializa WiFi
-    Serial.println("Inicializando WiFi...");
-    iniciaWiFi();
 
     // Configuração do display LCD
     Serial.println("Inicializando LCD...");
@@ -374,8 +388,9 @@ void setup() {
 
 // Função que executa o loop principal do programa
 void loop() {
-    checaWiFi();
-    checaTimeStamp();
+    checaWiFi(); // Verifica se o ESP32 está conectado na rede WiFi
+    Serial.println("\n--------------------------------------------------------------------------------");
+    checaTimeStamp(); // Verifica o horário no servidor NTP
     /*
     if (!((millis() - tUltInt0) % 15000)) // Verifica se o tempo desde a última interrupção é múltiplo de 15 segundos
         selecionaModo(); // Se sim, chama a função de seleção de modo (para que o modo seja alterado automaticamente a cada 15 segundos)
