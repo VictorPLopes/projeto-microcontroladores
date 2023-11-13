@@ -41,7 +41,7 @@ Piracicaba, 2023
 
 #define LCD_ENDERECO 0x27 // Endereço I2C padrão do LCD
 
-#define ledWiFi 23 //Led que indica se a conexão WiFi foi feita
+#define LED_WIFI 23 //Led que indica se a conexão WiFi foi feita
 
 #define POS_GRAUS 0 // Posição do caractere de graus (°) no LCD
 #define POS_ATIL 1 // Posição do caractere de a com til (ã) no LCD
@@ -54,14 +54,18 @@ Piracicaba, 2023
 // CONSTANTES
 const float pressaoMar = 1013.25; // Pressão atmosférica ao nível do mar em 
 const float vDiodosGlobal = 0.45; // Tensão nos diodos do ESP32
-const char* ssid = "Senha: 12345678";
-const char* password = "12345678";
+
+const String ssid = "WiFi_Victor"; // Nome da rede WiFi
+const String password = "12345678"; // Senha da rede WiFi
+
+const int gmt_menos3 = -10800; //Fuso horário de Brasilia em segundos
 
 // VARIÁVEIS GLOBAIS
 
 //Configuração para acessar o horário no servidor utilizando o protocolo NTP
 WiFiUDP ntpUDP;                     
-NTPClient timeClient(ntpUDP,"pool.ntp.org");  //pool.ntp.org é o endereço do servidor
+NTPClient timeClient(ntpUDP, "pool.ntp.org"); // pool.ntp.org é o endereço do servidor
+unsigned long timeStamp = 0; // Variável para armazenar a epoca
 
 LiquidCrystal_I2C lcd(LCD_ENDERECO, 16, 2); // Criação do objeto lcd da classe LiquidCrystal_I2C - Endereço I2C do LCD: 0x27 | Número de colunas: 16 | Número de linhas: 2
 
@@ -72,8 +76,6 @@ Adafruit_BMP280 bmp; // Criação do objeto bmp da classe Adafruit_BMP280
 volatile byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão, 3 = Altitude
 
 unsigned long tUltInt0 = 0; // Variável que armazena o tempo da última interrupção do botão de seleção de modo
-
-unsigned long timeStamp=0; //Variável para armazenar a epoca
 
 double temperatura = 0; // Temperatura em graus Celsius - valor temporário de teste
 float umidade = 0; // Umidade relativa do ar em %
@@ -194,7 +196,7 @@ void medeTemperatura(float vDiodos, int nMedidas) { // vDiodos é a tensão nos 
         temperatura = tempAux; // Atualiza o valor da temperatura
 }
 
-// Código necessário para gravar a interrupção na memória ram do ESP8266
+// Código necessário para gravar a interrupção na memória ram do ESP8266 (não é necessário para o ESP32)
 void ICACHE_RAM_ATTR selecionaModo();
 
 // Função acionada pela interrupção do botão de seleção de modo que alterna entre os modos de operação
@@ -254,69 +256,72 @@ void escreveLCD() {
 
 //Função para inicializar a rede WiFi
 void iniciaWiFi() {
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  Serial.print("Conectando na rede WiFi ..");
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print('.');
-    delay(1000);
-  }
-  Serial.println(WiFi.localIP());
-  digitalWrite(ledWiFi, HIGH);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    Serial.println("Conectando na rede WiFi...");
+    while (WiFi.status() != WL_CONNECTED) {
+        Serial.print('.');
+        delay(1000);
+    }
+    Serial.println(WiFi.localIP());
+    digitalWrite(LED_WIFI, HIGH);
 }
 
 //Verifica se o esp32 está conectado na rede WiFi
 void checaWiFi() {
-  if ((WiFi.status() != WL_CONNECTED)) {
-    digitalWrite(ledWiFi, LOW);
-    Serial.println("Reconectando na rede WiFi...");
-    WiFi.disconnect();
-    iniciaWiFi();
-  }
+    if (WiFi.status() != WL_CONNECTED) {
+        digitalWrite(LED_WIFI, LOW);
+        Serial.println("Reconectando na rede WiFi...");
+        WiFi.disconnect();
+        iniciaWiFi();
+    }
 }
-void checaTimeStamp(){
-  timeClient.update();                 // Obtém o horário do servidor NTP
-  timeStamp=timeClient.getEpochTime(); // Quando for converter o timeStamp para data e horário no Python, precisa somar 10800 para ajustar o fuso
-  Serial.print("HORARIO: ");
-  Serial.println(timeClient.getFormattedTime());
 
-  Serial.print("HORA: ");
-  Serial.println(timeClient.getHours());
+//Função para checar o horário no servidor NTP
+void checaTimeStamp() {
+    timeClient.update(); // Obtém o horário do servidor NTP
+    timeStamp = timeClient.getEpochTime(); // Quando for converter o timeStamp para data e horário no Python, precisa somar 10800 para ajustar o fuso
+    
+    Serial.print("HORARIO: ");
+    Serial.println(timeClient.getFormattedTime());
 
-  Serial.print("MINUTOS: ");
-  Serial.println(timeClient.getMinutes());
+    Serial.print("HORA: ");
+    Serial.println(timeClient.getHours());
 
-  Serial.print("SEGUNDOS: ");
-  Serial.println(timeClient.getSeconds());
+    Serial.print("MINUTOS: ");
+    Serial.println(timeClient.getMinutes());
 
-  Serial.print("DIA DA SEMANA: ");
-  byte dia = timeClient.getDay();
-  switch (dia){
-    case 0:
-      Serial.print("Domingo");
-      break;
-    case 1:
-      Serial.print("Segunda-Feira");
-      break;
-    case 2:
-      Serial.print("Terca-Feira");
-      break;
-    case 3:
-      Serial.print("Quarta-Feira");
-      break;
-    case 4:
-      Serial.print("Quinta-Feira");
-      break;
-    case 5:
-      Serial.print("Sexta-Feira");
-      break;
-    case 6:
-      Serial.print("Sabado");
-      break;     
-  }                           
-  Serial.print("Epoca (Segundos desde 01/01/1970): ");
-  Serial.println(timeStamp);
-  Serial.println();
+    Serial.print("SEGUNDOS: ");
+    Serial.println(timeClient.getSeconds());
+
+    Serial.print("DIA DA SEMANA: ");
+    byte dia = timeClient.getDay();
+    switch (dia) {
+        case 0:
+            Serial.println("Domingo");
+            break;
+        case 1:
+            Serial.println("Segunda-Feira");
+            break;
+        case 2:
+            Serial.println("Terça-Feira");
+            break;
+        case 3:
+            Serial.println("Quarta-Feira");
+            break;
+        case 4:
+            Serial.println("Quinta-Feira");
+            break;
+        case 5:
+            Serial.println("Sexta-Feira");
+            break;
+        case 6:
+            Serial.println("Sábado");
+            break;     
+    }
+
+    Serial.print("Epoca (Segundos desde 01/01/1970): ");
+    Serial.println(timeStamp+"\n");
 }
 
 // Função que inicializa o ESP32
@@ -326,28 +331,34 @@ void setup() {
 
     // Inicializa a USART
     Serial.begin(9600);
+    Serial.flush(); // Limpa o buffer da USART
 
     // Configuração da conexão WiFi
-    pinMode(ledWiFi, OUTPUT);
-    digitalWrite(ledWiFi, LOW);
+    pinMode(LED_WIFI, OUTPUT);
+    digitalWrite(LED_WIFI, LOW);
 
     //Inicializa conexão servidor NTP
+    Serial.println("Inicializando conexão com servidor NTP...");
     timeClient.begin();
-    timeClient.setTimeOffset(-10800); //Correção do fuso horário para o horário de Brasilia
+    timeClient.setTimeOffset(gmt_menos3); //Correção do fuso horário para o horário de Brasilia
   
     //Inicializa WiFi
+    Serial.println("Inicializando WiFi...");
     iniciaWiFi();
 
     // Configuração do display LCD
+    Serial.println("Inicializando LCD...");
     lcd.init(); // Inicialização do LCD
     lcd.backlight(); // Liga o backlight do LCD
     lcd.createChar(POS_GRAUS, graus); // Cria o caractere de graus (°) no LCD
     lcd.createChar(POS_ATIL, aTil); // Cria o caractere de a com til (ã) no LCD
 
     // Configuração do sensor DHT11
+    Serial.println("Inicializando DHT11...");
     dht.begin();
     
     // Configuração do sensor BMP280
+    Serial.println("Inicializando BMP280...");
     while(!bmp.begin(BMP280_ADDRESS_ALT)) { // Verifica se o sensor BMP280 foi encontrado
         Serial.println("Sensor não localizado");
         lcd.setCursor(0, 0);
@@ -363,8 +374,8 @@ void setup() {
 
 // Função que executa o loop principal do programa
 void loop() {
-  checaWiFi();
-  checaTimeStamp();
+    checaWiFi();
+    checaTimeStamp();
     /*
     if (!((millis() - tUltInt0) % 15000)) // Verifica se o tempo desde a última interrupção é múltiplo de 15 segundos
         selecionaModo(); // Se sim, chama a função de seleção de modo (para que o modo seja alterado automaticamente a cada 15 segundos)
