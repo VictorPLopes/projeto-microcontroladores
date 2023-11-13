@@ -28,7 +28,7 @@ Piracicaba, 2023
 #include <DHT.h> // Biblioteca para sensor DHT
 #include <Adafruit_BMP280.h> //Biblioteca para sensor BMP
 #include <WiFi.h> //Biblioteca para a conexão WiFi
-#include "NTPClient.h" //Biblioteca para TimeStamp
+#include <NTPClient.h> //Biblioteca para TimeStamp
 
 // DEFINIÇÕES
 
@@ -289,12 +289,33 @@ void checaTimeStamp(){
   Serial.print("SEGUNDOS: ");
   Serial.println(timeClient.getSeconds());
 
-  Serial.print("DIA DA SEMANA (0=domingo): ");
-  Serial.println(timeClient.getDay());
-
+  Serial.print("DIA DA SEMANA: ");
+  byte dia = timeClient.getDay();
+  switch (dia){
+    case 0:
+      Serial.print("Domingo");
+      break;
+    case 1:
+      Serial.print("Segunda-Feira");
+      break;
+    case 2:
+      Serial.print("Terca-Feira");
+      break;
+    case 3:
+      Serial.print("Quarta-Feira");
+      break;
+    case 4:
+      Serial.print("Quinta-Feira");
+      break;
+    case 5:
+      Serial.print("Sexta-Feira");
+      break;
+    case 6:
+      Serial.print("Sabado");
+      break;     
+  }                           
   Serial.print("Epoca (Segundos desde 01/01/1970): ");
   Serial.println(timeStamp);
-
   Serial.println();
 }
 
@@ -343,6 +364,7 @@ void setup() {
 // Função que executa o loop principal do programa
 void loop() {
   checaWiFi();
+  checaTimeStamp();
     /*
     if (!((millis() - tUltInt0) % 15000)) // Verifica se o tempo desde a última interrupção é múltiplo de 15 segundos
         selecionaModo(); // Se sim, chama a função de seleção de modo (para que o modo seja alterado automaticamente a cada 15 segundos)
