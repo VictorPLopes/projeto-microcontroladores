@@ -64,7 +64,8 @@ const int gmt_menos3 = -10800; //Fuso horário de Brasilia em segundos
 // VARIÁVEIS GLOBAIS
 
 //Configuração para acessar o horário no servidor utilizando o protocolo NTP
-WiFiUDP ntpUDP;                     
+WiFiUDP ntpUDP; // Criação do objeto ntpUDP da classe WiFiUDP
+bool ntpStatus = false; // Variável que indica se o NTP está inicializado
 NTPClient timeClient(ntpUDP, "pool.ntp.org"); // pool.ntp.org é o endereço do servidor
 unsigned long timeStamp = 0; // Variável para armazenar a epoca
 
@@ -203,10 +204,9 @@ void ICACHE_RAM_ATTR selecionaModo();
 // Função acionada pela interrupção do botão de seleção de modo que alterna entre os modos de operação
 void selecionaModo() {
     if ((millis() - tUltInt0) > FILTRO){ // Verifica se o tempo desde a última interrupção é maior que o filtro
-        modoSelecionado = (modoSelecionado + 1) % 4; // Incrementa o modo selecionado e faz o módulo 4 para que o valor fique entre 0 e 3
+        modoSelecionado = (modoSelecionado + 1) % 5; // Incrementa o modo selecionado e faz o módulo 4 para que o valor fique entre 0 e 3
         tUltInt0 = millis(); // Atualiza o tempo da última interrupção
     }
-    //escreveLCD(); // Escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado | NÃO FUNCIONA
 }
 
 // Função que escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
@@ -243,7 +243,7 @@ void escreveLCD() {
         lcd.print(pressao);
         lcd.print("hPa ");
         break;
-    default: // Modo de altitude
+    case 4: // Modo de altitude
         lcd.setCursor(0, 0);
         lcd.print("    Altitude    ");
         lcd.setCursor(0, 1);
@@ -252,31 +252,85 @@ void escreveLCD() {
         lcd.print(altitude);
         lcd.print("m    ");
         break;
+    default: // Modo de data e hora
+        lcd.setCursor(0, 0);
+        if (WiFi.status() == WL_CONNECTED) { // Se o ESP32 estiver conectado na rede WiFi
+            lcd.print("Data: ");
+            lcd.print(epochToDDMMYYYY(timeStamp, gmt_menos3));
+            lcd.setCursor(0, 1);
+            lcd.print(" Hora: ");
+            lcd.print(timeClient.getFormattedTime());
+            lcd.print(" ");
+        }
+        else { // Se o ESP32 não estiver conectado na rede WiFi
+            lcd.print("      WiFi      ");
+            lcd.setCursor(0, 1);
+            lcd.print("  Desconectado  ");
+        }
     }
 }
 
+// Função que se conecta na rede WiFi
+void conectaWiFi(String ssid, String password) {
+    WiFi.mode(WIFI_STA); // Configura o ESP32 como cliente WiFi
+    WiFi.begin(ssid, password); // Conecta na rede WiFi
+}
 
-//Função para inicializar a rede WiFi
+
+// Função para inicializar a rede WiFi
 void iniciaWiFi() {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
     Serial.println("Conectando na rede WiFi...");
-    while (WiFi.status() != WL_CONNECTED) {
+    Serial.println(ssid);
+
+    conectaWiFi(ssid, password); // Conecta na rede WiFi
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Conectando WiFi");
+    lcd.setCursor(0, 1);
+    lcd.print("...");
+
+    unsigned long t0 = millis(); // Armazena o tempo atual em milissegundos
+    while ((WiFi.status() != WL_CONNECTED) && ((millis() - t0) < 30000)) { // Verifica se o ESP32 está conectado na rede WiFi ou se o tempo desde o início da conexão é maior que 30 segundos
         Serial.print('.');
+        WiFi.disconnect(); // Desconecta da rede WiFi
         delay(1000);
+
+        conectaWiFi(ssid, password); // Conecta na rede WiFi
     }
-    Serial.println(WiFi.localIP());
-    digitalWrite(LED_WIFI, HIGH);
+    if (WiFi.status() != WL_CONNECTED) { // Se o ESP32 não estiver conectado na rede WiFi após 30 segundos
+        Serial.println("Falha na conexão WiFi");
+
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Erro no WiFi!");
+
+        delay(2000);
+    }
+    else {
+        Serial.println(WiFi.localIP()); // Imprime o endereço IP do ESP32 no monitor serial
+
+        digitalWrite(LED_WIFI, HIGH); // Acende o LED que indica que o ESP32 está conectado na rede WiFi
+
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("WiFi conectado!");
+
+        delay(2000);
+    }
 }
 
 // Verifica se o ESP32 está conectado na rede WiFi
-void checaWiFi() {
-    if (WiFi.status() != WL_CONNECTED) {
-        digitalWrite(LED_WIFI, LOW);
+bool checaWiFi() {
+    if (WiFi.status() != WL_CONNECTED) { // Se o ESP32 não estiver conectado na rede WiFi
+        digitalWrite(LED_WIFI, LOW); // Apaga o LED que indica que o ESP32 está conectado na rede WiFi
+
         Serial.println("Reconectando na rede WiFi...");
         WiFi.disconnect();
-        iniciaWiFi();
+
+        conectaWiFi(ssid, password); // Conecta na rede WiFi
     }
+    return WiFi.status() == WL_CONNECTED; // Retorna se o ESP32 está conectado na rede WiFi
 }
 
 // Função que converte de epoch para DD/MM/AAAA
@@ -288,8 +342,16 @@ String epochToDDMMYYYY(unsigned long epoch, int fuso) {
 
 // Função para checar o horário no servidor NTP
 void checaTimeStamp() {
+    if (!ntpStatus) { // Se o NTP não estiver inicializado
+        timeClient.begin(); // Inicializa o NTP
+        timeClient.setTimeOffset(gmt_menos3); //Correção do fuso horário para o horário de Brasilia
+    }
+
     timeClient.update(); // Obtém o horário do servidor NTP
     timeStamp = timeClient.getEpochTime(); // Quando for converter o timeStamp para data e horário no Python, precisa somar 10800 para ajustar o fuso
+
+    Serial.println("\n--------------------------------------------------------------------------------");
+
 
     Serial.print("HORARIO: ");
     Serial.println(timeClient.getFormattedTime());
@@ -345,6 +407,13 @@ void setup() {
     // Inicializa a USART
     Serial.begin(9600);
     Serial.flush(); // Limpa o buffer da USART
+    
+    // Configuração do display LCD
+    Serial.println("Inicializando LCD...");
+    lcd.init(); // Inicialização do LCD
+    lcd.backlight(); // Liga o backlight do LCD
+    lcd.createChar(POS_GRAUS, graus); // Cria o caractere de graus (°) no LCD
+    lcd.createChar(POS_ATIL, aTil); // Cria o caractere de a com til (ã) no LCD
 
     // Configuração da conexão WiFi
     pinMode(LED_WIFI, OUTPUT);
@@ -355,17 +424,12 @@ void setup() {
     iniciaWiFi();
 
     //Inicializa conexão servidor NTP
-    Serial.println("Inicializando conexão com servidor NTP...");
-    timeClient.begin();
-    timeClient.setTimeOffset(gmt_menos3); //Correção do fuso horário para o horário de Brasilia
-  
-
-    // Configuração do display LCD
-    Serial.println("Inicializando LCD...");
-    lcd.init(); // Inicialização do LCD
-    lcd.backlight(); // Liga o backlight do LCD
-    lcd.createChar(POS_GRAUS, graus); // Cria o caractere de graus (°) no LCD
-    lcd.createChar(POS_ATIL, aTil); // Cria o caractere de a com til (ã) no LCD
+    if (WiFi.status() == WL_CONNECTED) { // Se o ESP32 estiver conectado na rede WiFi
+        Serial.println("Inicializando conexão com servidor NTP...");
+        ntpStatus = true;
+        timeClient.begin();
+        timeClient.setTimeOffset(gmt_menos3); //Correção do fuso horário para o horário de Brasilia
+    }
 
     // Configuração do sensor DHT11
     Serial.println("Inicializando DHT11...");
@@ -388,13 +452,9 @@ void setup() {
 
 // Função que executa o loop principal do programa
 void loop() {
-    checaWiFi(); // Verifica se o ESP32 está conectado na rede WiFi
-    Serial.println("\n--------------------------------------------------------------------------------");
-    checaTimeStamp(); // Verifica o horário no servidor NTP
-    /*
-    if (!((millis() - tUltInt0) % 15000)) // Verifica se o tempo desde a última interrupção é múltiplo de 15 segundos
-        selecionaModo(); // Se sim, chama a função de seleção de modo (para que o modo seja alterado automaticamente a cada 15 segundos)
-    */
+    if (checaWiFi()) // Verifica se o ESP32 está conectado na rede WiFi
+        checaTimeStamp(); // Verifica o horário no servidor NTP
+    
     escreveLCD(); // Escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
     delay(1000); // Delay de 1 segundo
 }
