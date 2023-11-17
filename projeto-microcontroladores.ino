@@ -30,59 +30,79 @@ Piracicaba, 2023
 #include <WiFi.h> //Biblioteca para a conexão WiFi
 #include <NTPClient.h> //Biblioteca para TimeStamp
 #include <time.h> //Biblioteca para TimeStamp
+#include <PubSubClient.h> //Biblioteca para MQTT
+
 
 // DEFINIÇÕES
 
 // Diretivas define para atribuição dos nomes dos pinos de E/S
 #define BOTAO 5 // Pino do botão de seleção no ESP32 (D5 - GPIO5)
-//#define BOTAO 14 // Pino do botão de seleção no ESP8266 (D5 - GPIO14)
 #define DHT_PINO 4 // Pino do sensor DHT11 no ESP32 (D4 - GPIO4)
 #define LM35_PINO 35 // Pino de leitura analógica do sensor LM35
-//#define DHT_PINO 2 // Pino do sensor DHT11 no ESP8266 (D4 - GPIO2)
+#define LED_WIFI 23 //Led que indica se a conexão WiFi foi feita
 
 #define LCD_ENDERECO 0x27 // Endereço I2C padrão do LCD
 
-#define LED_WIFI 23 //Led que indica se a conexão WiFi foi feita
-
+// Diretivas define para atribuição das posições dos caracteres especiais no LCD
 #define POS_GRAUS 0 // Posição do caractere de graus (°) no LCD
 #define POS_ATIL 1 // Posição do caractere de a com til (ã) no LCD
-
 
 // Filtro global para o botão de seleção de modo
 #define FILTRO 500
 
 
 // CONSTANTES
+
+// Constnantess para medidas de variáveis climáticas
 const float pressaoMar = 1013.25; // Pressão atmosférica ao nível do mar em 
 const float vDiodosGlobal = 0.45; // Tensão nos diodos do ESP32
 
+// Constantes para configurar a conexão WiFi
 const String ssid = "WiFi_Victor"; // Nome da rede WiFi
 const String password = "12345678"; // Senha da rede WiFi
 
+// Constantes para configurar a conexão com o servidor NTP
+const String ntpServer = "pool.ntp.org"; // Endereço do servidor NTP
 const int gmt_menos3 = -10800; //Fuso horário de Brasilia em segundos
 
-// VARIÁVEIS GLOBAIS
+// Constantes para configurar a conexão com o broker MQTT
+const String brokerMqtt = "broker.hivemq.com"; // Endereço do broker MQTT
+const int portaMqtt = 1883; // Porta do broker MQTT
+const String idMqtt = "dadosClimaticosGrupoZ"; // ID MQTT (para identificar a sessão)
 
-//Configuração para acessar o horário no servidor utilizando o protocolo NTP
+
+// VARIÁVEIS E OBJETOS GLOBAIS
+
+// Configuração para acessar o horário no servidor utilizando o protocolo NTP
 WiFiUDP ntpUDP; // Criação do objeto ntpUDP da classe WiFiUDP
+NTPClient timeClient(ntpUDP, ntpServer.c_str()); // pool.ntp.org é o endereço do servidor; conversão para "const char*
 bool ntpStatus = false; // Variável que indica se o NTP está inicializado
-NTPClient timeClient(ntpUDP, "pool.ntp.org"); // pool.ntp.org é o endereço do servidor
 unsigned long timeStamp = 0; // Variável para armazenar a epoca
 
-LiquidCrystal_I2C lcd(LCD_ENDERECO, 16, 2); // Criação do objeto lcd da classe LiquidCrystal_I2C - Endereço I2C do LCD: 0x27 | Número de colunas: 16 | Número de linhas: 2
+// Criação do objeto da classe WiFiClient para conexão com o broker MQTT por meio de um endereço e uma porta
+WiFiClient espClient; // Criação do objeto espClient da classe WiFiClient
+PubSubClient mqttClient(espClient); // Criação do objeto client da classe PubSubClient 
 
-DHT dht(DHT_PINO, DHT11); // Criação do objeto dht da classe DHT - Pino do DHT: 4 | Tipo: DHT11
+// Criação do objeto lcd da classe LiquidCrystal_I2C - Endereço I2C do LCD: 0x27 | Número de colunas: 16 | Número de linhas: 2
+LiquidCrystal_I2C lcd(LCD_ENDERECO, 16, 2);
 
-Adafruit_BMP280 bmp; // Criação do objeto bmp da classe Adafruit_BMP280
+// Criação do objeto dht da classe DHT - Pino do DHT: 4 | Tipo: DHT11
+DHT dht(DHT_PINO, DHT11);
 
-volatile byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão, 3 = Altitude
+// Criação do objeto bmp da classe Adafruit_BMP280
+Adafruit_BMP280 bmp;
 
-unsigned long tUltInt0 = 0; // Variável que armazena o tempo da última interrupção do botão de seleção de modo
+// Variável que armazena o modo de operação selecionado
+volatile byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão, 3 = Altitude, 4 = Data e Hora
 
-double temperatura = 0; // Temperatura em graus Celsius - valor temporário de teste
-float umidade = 0; // Umidade relativa do ar em %
-float pressao = 0; // Pressão atmosférica em hPa - valor temporário de teste
-float altitude = 0; // Altitude em metros - valor temporário de teste
+// Variável que armazena o tempo da última interrupção do botão de seleção de modo
+unsigned long tUltInt0 = 0;
+
+// Variáveis que armazenam os valores de temperatura, umidade, pressão e altitude
+float temperatura = 0, // Temperatura em graus Celsius
+      umidade = 0, // Umidade relativa do ar em %
+      pressao = 0, // Pressão atmosférica em hPa
+      altitude = 0; // Altitude em metros
 
 byte graus[8] = { // Vetor de bytes que armazena o caractere de graus (°) para ser escrito no LCD
 	0b00000,
@@ -279,27 +299,26 @@ void conectaWiFi(String ssid, String password) {
 
 // Função para inicializar a rede WiFi
 void iniciaWiFi() {
-    Serial.println("Conectando na rede WiFi...");
-    Serial.println(ssid);
-
-    conectaWiFi(ssid, password); // Conecta na rede WiFi
-
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Conectando WiFi");
     lcd.setCursor(0, 1);
     lcd.print("...");
 
+    Serial.println("Conectando na rede WiFi...");
+    Serial.println(ssid);
+
+    conectaWiFi(ssid, password); // Conecta na rede WiFi
+
     unsigned long t0 = millis(); // Armazena o tempo atual em milissegundos
-    while ((WiFi.status() != WL_CONNECTED) && ((millis() - t0) < 30000)) { // Verifica se o ESP32 está conectado na rede WiFi ou se o tempo desde o início da conexão é maior que 30 segundos
+    while ((WiFi.status() != WL_CONNECTED) && ((millis() - t0) < 15000)) { // Verifica se o ESP32 está conectado na rede WiFi ou se o tempo desde o início da conexão é maior que 30 segundos
         Serial.print('.');
         WiFi.disconnect(); // Desconecta da rede WiFi
-        delay(1000);
 
         conectaWiFi(ssid, password); // Conecta na rede WiFi
     }
     if (WiFi.status() != WL_CONNECTED) { // Se o ESP32 não estiver conectado na rede WiFi após 30 segundos
-        Serial.println("Falha na conexão WiFi");
+        Serial.println("\nFalha na conexão WiFi");
 
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -308,6 +327,7 @@ void iniciaWiFi() {
         delay(2000);
     }
     else {
+        Serial.print("\nConectado na rede WiFi ");
         Serial.println(WiFi.localIP()); // Imprime o endereço IP do ESP32 no monitor serial
 
         digitalWrite(LED_WIFI, HIGH); // Acende o LED que indica que o ESP32 está conectado na rede WiFi
@@ -331,6 +351,66 @@ bool checaWiFi() {
         conectaWiFi(ssid, password); // Conecta na rede WiFi
     }
     return WiFi.status() == WL_CONNECTED; // Retorna se o ESP32 está conectado na rede WiFi
+}
+
+// Função para conectar no broker MQTT
+bool conectaMqtt(String endereco, int porta, String id) {
+    mqttClient.setServer(endereco.c_str(), porta); // Configura o endereço e a porta do broker MQTT
+    return mqttClient.connect(id.c_str()); // Conecta no broker MQTT
+}
+
+// Função para inicializar a conexão com o broker MQTT
+void iniciaMqtt() {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Conectando MQTT");
+    lcd.setCursor(0, 1);
+    lcd.print("...");
+
+    Serial.println("Conectando no broker MQTT...");
+    Serial.println(brokerMqtt);
+
+    unsigned long t0 = millis(); // Armazena o tempo atual em milissegundos
+    while (!conectaMqtt(brokerMqtt, portaMqtt, idMqtt) && ((millis() - t0) < 15000)) { // Verifica se o ESP32 está conectado no broker MQTT ou se o tempo desde o início da conexão é maior que 30 segundos
+        Serial.print('.');
+        mqttClient.disconnect(); // Desconecta do broker MQTT
+    }
+    if (!mqttClient.connected()) { // Se o ESP32 não estiver conectado no broker MQTT após 15 segundos
+        Serial.println("\nFalha na conexão MQTT");
+
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Erro no MQTT!");
+        lcd.setCursor(0, 1);
+        lcd.print("Envio indisp.");
+
+        delay(2000);
+    }
+    else {
+        Serial.println("\nConectado no broker MQTT");
+
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("MQTT conectado!");
+
+        delay(2000);
+    }
+}
+
+// Verifica se o ESP32 está conectado no broker MQTT
+bool checaMqtt() {
+    if (!mqttClient.connected()) { // Se o ESP32 não estiver conectado no broker MQTT
+        Serial.println("Reconectando no broker MQTT...");
+        mqttClient.disconnect();
+
+        conectaMqtt(brokerMqtt, portaMqtt, idMqtt); // Conecta no broker MQTT
+    }
+    return mqttClient.connected(); // Retorna se o ESP32 está conectado no broker MQTT
+}
+
+// Função para publicar os dados no broker MQTT
+void publicaMqtt(String topico, String mensagem) {
+    mqttClient.publish(topico.c_str(), mensagem.c_str()); // Publica a mensagem no tópico
 }
 
 // Função que converte de epoch para DD/MM/AAAA
@@ -426,9 +506,12 @@ void setup() {
     //Inicializa conexão servidor NTP
     if (WiFi.status() == WL_CONNECTED) { // Se o ESP32 estiver conectado na rede WiFi
         Serial.println("Inicializando conexão com servidor NTP...");
-        ntpStatus = true;
         timeClient.begin();
         timeClient.setTimeOffset(gmt_menos3); //Correção do fuso horário para o horário de Brasilia
+        ntpStatus = true;
+        
+        Serial.println("Inicializando MQTT...");
+        iniciaMqtt();
     }
 
     // Configuração do sensor DHT11
@@ -452,8 +535,28 @@ void setup() {
 
 // Função que executa o loop principal do programa
 void loop() {
-    if (checaWiFi()) // Verifica se o ESP32 está conectado na rede WiFi
+    if (checaWiFi()) { // Verifica se o ESP32 está conectado na rede WiFi
         checaTimeStamp(); // Verifica o horário no servidor NTP
+        if (checaMqtt()) { // Verifica se o ESP32 está conectado no broker MQTT
+            Serial.println("Publicando dados no broker MQTT...");
+
+            publicaMqtt("timeStampGrupoZ", String(timeStamp)); // Publica o timeStamp no tópico "timeStampGrupoZ"
+            char *temperaturaChar;
+            dtostrf(temperatura, 6, 3, temperaturaChar); // Converte o valor da temperatura para char[]
+            publicaMqtt("temperaturaGrupoZ", String(temperaturaChar)); // Publica a temperatura no tópico "temperaturaGrupoZ"
+            char *umidadeChar;
+            dtostrf(umidade, 6, 3, umidadeChar); // Converte o valor da umidade para char[]
+            publicaMqtt("umidadeGrupoZ", String(umidadeChar)); // Publica a umidade no tópico "umidadeGrupoZ"
+            char *pressaoChar;
+            dtostrf(pressao, 6, 3, pressaoChar); // Converte o valor da pressão para char[]
+            publicaMqtt("pressaoGrupoZ", String(pressaoChar)); // Publica a pressão no tópico "pressaoGrupoZ"
+            char *altitudeChar;
+            dtostrf(altitude, 6, 3, altitudeChar); // Converte o valor da altitude para char[]
+            publicaMqtt("altitudeGrupoZ", String(altitudeChar)); // Publica a altitude no tópico "altitudeGrupoZ"
+
+            mqttClient.loop(); // Mantém a conexão com o broker MQTT
+        }
+    }
     
     escreveLCD(); // Escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
     delay(1000); // Delay de 1 segundo
