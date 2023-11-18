@@ -535,16 +535,16 @@ void loop() {
             Serial.println("Publicando dados no broker MQTT...");
 
             publicaMqtt(String("timeStampGrupoZ"), String(timeStamp)); // Publica o timeStamp no tópico "timeStampGrupoZ"
-            char *temperaturaChar;
+            char temperaturaChar[10];
             dtostrf(temperatura, 6, 3, temperaturaChar); // Converte o valor da temperatura para char[]
             publicaMqtt(String("temperaturaGrupoZ"), String(temperaturaChar)); // Publica a temperatura no tópico "temperaturaGrupoZ"
-            char *umidadeChar;
+            char umidadeChar[10];
             dtostrf(umidade, 6, 3, umidadeChar); // Converte o valor da umidade para char[]
             publicaMqtt(String("umidadeGrupoZ"), String(umidadeChar)); // Publica a umidade no tópico "umidadeGrupoZ"
-            char *pressaoChar;
+            char pressaoChar[10];
             dtostrf(pressao, 6, 3, pressaoChar); // Converte o valor da pressão para char[]
             publicaMqtt(String("pressaoGrupoZ"), String(pressaoChar)); // Publica a pressão no tópico "pressaoGrupoZ"
-            char *altitudeChar;
+            char altitudeChar[10];
             dtostrf(altitude, 6, 3, altitudeChar); // Converte o valor da altitude para char[]
             publicaMqtt(String("altitudeGrupoZ"), String(altitudeChar)); // Publica a altitude no tópico "altitudeGrupoZ"
 
