@@ -343,6 +343,7 @@ bool checaWiFi() {
 
         Serial.println("Reconectando na rede WiFi...");
 
+	WiFi.disconnect();
         conectaWiFi(ssid, password); // Conecta na rede WiFi
     }
     return WiFi.status() == WL_CONNECTED; // Retorna se o ESP32 está conectado na rede WiFi
@@ -533,19 +534,19 @@ void loop() {
         if (checaMqtt()) { // Verifica se o ESP32 está conectado no broker MQTT
             Serial.println("Publicando dados no broker MQTT...");
 
-            publicaMqtt("timeStampGrupoZ", String(timeStamp)); // Publica o timeStamp no tópico "timeStampGrupoZ"
+            publicaMqtt(String("timeStampGrupoZ"), String(timeStamp)); // Publica o timeStamp no tópico "timeStampGrupoZ"
             char *temperaturaChar;
             dtostrf(temperatura, 6, 3, temperaturaChar); // Converte o valor da temperatura para char[]
-            publicaMqtt("temperaturaGrupoZ", String(temperaturaChar)); // Publica a temperatura no tópico "temperaturaGrupoZ"
+            publicaMqtt(String("temperaturaGrupoZ"), String(temperaturaChar)); // Publica a temperatura no tópico "temperaturaGrupoZ"
             char *umidadeChar;
             dtostrf(umidade, 6, 3, umidadeChar); // Converte o valor da umidade para char[]
-            publicaMqtt("umidadeGrupoZ", String(umidadeChar)); // Publica a umidade no tópico "umidadeGrupoZ"
+            publicaMqtt(String("umidadeGrupoZ"), String(umidadeChar)); // Publica a umidade no tópico "umidadeGrupoZ"
             char *pressaoChar;
             dtostrf(pressao, 6, 3, pressaoChar); // Converte o valor da pressão para char[]
-            publicaMqtt("pressaoGrupoZ", String(pressaoChar)); // Publica a pressão no tópico "pressaoGrupoZ"
+            publicaMqtt(String("pressaoGrupoZ"), String(pressaoChar)); // Publica a pressão no tópico "pressaoGrupoZ"
             char *altitudeChar;
             dtostrf(altitude, 6, 3, altitudeChar); // Converte o valor da altitude para char[]
-            publicaMqtt("altitudeGrupoZ", String(altitudeChar)); // Publica a altitude no tópico "altitudeGrupoZ"
+            publicaMqtt(String("altitudeGrupoZ"), String(altitudeChar)); // Publica a altitude no tópico "altitudeGrupoZ"
 
             mqttClient.loop(); // Mantém a conexão com o broker MQTT
         }
