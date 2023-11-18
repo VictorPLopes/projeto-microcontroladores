@@ -238,7 +238,6 @@ void escreveLCD() {
         lcd.print("  Temperatura   ");
         lcd.setCursor(0, 1);
         lcd.print("   T=");
-        medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
         lcd.print(temperatura);
         lcd.write(POS_GRAUS); // Escreve o caractere de graus (°) no LCD
         lcd.print("C   ");
@@ -248,7 +247,6 @@ void escreveLCD() {
         lcd.print("    Umidade     ");
         lcd.setCursor(0, 1);
         lcd.print("   Ur%=");
-        medeUmidade(); // Atualiza o valor da umidade
         lcd.print(umidade);
         lcd.print("    ");
         break;
@@ -259,7 +257,6 @@ void escreveLCD() {
         lcd.print("o     ");
         lcd.setCursor(0, 1);
         lcd.print("  P=");
-        medePressaoAltitude(); // Atualiza o valor da pressão
         lcd.print(pressao);
         lcd.print("hPa ");
         break;
@@ -268,7 +265,6 @@ void escreveLCD() {
         lcd.print("    Altitude    ");
         lcd.setCursor(0, 1);
         lcd.print("   A=");
-        medePressaoAltitude(); // Atualiza o valor da altitude
         lcd.print(altitude);
         lcd.print("m    ");
         break;
@@ -529,6 +525,12 @@ void setup() {
 
 // Função que executa o loop principal do programa
 void loop() {
+	// Medições
+	medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
+	medeUmidade(); // Atualiza o valor da umidade
+	medePressaoAltitude(); // Atualiza o valor da pressão
+
+	// Rede
     if (checaWiFi()) { // Verifica se o ESP32 está conectado na rede WiFi
         checaTimeStamp(); // Verifica o horário no servidor NTP
         if (checaMqtt()) { // Verifica se o ESP32 está conectado no broker MQTT
