@@ -313,7 +313,6 @@ void iniciaWiFi() {
     unsigned long t0 = millis(); // Armazena o tempo atual em milissegundos
     while ((WiFi.status() != WL_CONNECTED) && ((millis() - t0) < 15000)) { // Verifica se o ESP32 está conectado na rede WiFi ou se o tempo desde o início da conexão é maior que 30 segundos
         Serial.print('.');
-        WiFi.disconnect(); // Desconecta da rede WiFi
 
         conectaWiFi(ssid, password); // Conecta na rede WiFi
     }
@@ -346,7 +345,6 @@ bool checaWiFi() {
         digitalWrite(LED_WIFI, LOW); // Apaga o LED que indica que o ESP32 está conectado na rede WiFi
 
         Serial.println("Reconectando na rede WiFi...");
-        WiFi.disconnect();
 
         conectaWiFi(ssid, password); // Conecta na rede WiFi
     }
@@ -373,7 +371,6 @@ void iniciaMqtt() {
     unsigned long t0 = millis(); // Armazena o tempo atual em milissegundos
     while (!conectaMqtt(brokerMqtt, portaMqtt, idMqtt) && ((millis() - t0) < 15000)) { // Verifica se o ESP32 está conectado no broker MQTT ou se o tempo desde o início da conexão é maior que 30 segundos
         Serial.print('.');
-        mqttClient.disconnect(); // Desconecta do broker MQTT
     }
     if (!mqttClient.connected()) { // Se o ESP32 não estiver conectado no broker MQTT após 15 segundos
         Serial.println("\nFalha na conexão MQTT");
@@ -401,7 +398,6 @@ void iniciaMqtt() {
 bool checaMqtt() {
     if (!mqttClient.connected()) { // Se o ESP32 não estiver conectado no broker MQTT
         Serial.println("Reconectando no broker MQTT...");
-        mqttClient.disconnect();
 
         conectaMqtt(brokerMqtt, portaMqtt, idMqtt); // Conecta no broker MQTT
     }
