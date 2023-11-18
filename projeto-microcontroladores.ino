@@ -311,11 +311,8 @@ void iniciaWiFi() {
     conectaWiFi(ssid, password); // Conecta na rede WiFi
 
     unsigned long t0 = millis(); // Armazena o tempo atual em milissegundos
-    while ((WiFi.status() != WL_CONNECTED) && ((millis() - t0) < 15000)) { // Verifica se o ESP32 está conectado na rede WiFi ou se o tempo desde o início da conexão é maior que 30 segundos
+    while ((WiFi.status() != WL_CONNECTED) && ((millis() - t0) < 15000)) // Verifica se o ESP32 está conectado na rede WiFi ou se o tempo desde o início da conexão é maior que 30 segundos
         Serial.print('.');
-
-        conectaWiFi(ssid, password); // Conecta na rede WiFi
-    }
     if (WiFi.status() != WL_CONNECTED) { // Se o ESP32 não estiver conectado na rede WiFi após 30 segundos
         Serial.println("\nFalha na conexão WiFi");
 
