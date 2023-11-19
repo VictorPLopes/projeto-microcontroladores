@@ -557,6 +557,8 @@ void loop() {
             mqttClient.publish("GrupoZ_press", pressaoChar, true);
             mqttClient.publish("GrupoZ_alt", altitudeChar, true);
 
+            Serial.println("Dados publicados no broker MQTT com sucesso!");
+
             mqttClient.loop(); // Mantém a conexão com o broker MQTT
         }
     }
