@@ -81,7 +81,7 @@ unsigned long timeStamp = 0; // Variável para armazenar a epoca
 
 // Criação do objeto da classe WiFiClient para conexão com o broker MQTT por meio de um endereço e uma porta
 WiFiClient espClient; // Criação do objeto espClient da classe WiFiClient
-PubSubClient mqttClient(espClient); // Criação do objeto client da classe PubSubClient 
+PubSubClient mqttClient(espClient); // Criação do objeto client da classe PubSubClient
 
 // Criação do objeto lcd da classe LiquidCrystal_I2C - Endereço I2C do LCD: 0x27 | Número de colunas: 16 | Número de linhas: 2
 LiquidCrystal_I2C lcd(LCD_ENDERECO, 16, 2);
@@ -536,19 +536,23 @@ void loop() {
         if (checaMqtt()) { // Verifica se o ESP32 está conectado no broker MQTT
             Serial.println("Publicando dados no broker MQTT...");
 
-            publicaMqtt(String("timeStampGrupoZ"), String(timeStamp)); // Publica o timeStamp no tópico "timeStampGrupoZ"
+            // Converte o valor da temperatura para char[]
             char temperaturaChar[10];
-            dtostrf(temperatura, 6, 3, temperaturaChar); // Converte o valor da temperatura para char[]
-            publicaMqtt(String("temperaturaGrupoZ"), String(temperaturaChar)); // Publica a temperatura no tópico "temperaturaGrupoZ"
+            dtostrf(temperatura, 6, 3, temperaturaChar);
+
+            // Converte o valor da umidade para char[]
             char umidadeChar[10];
-            dtostrf(umidade, 6, 3, umidadeChar); // Converte o valor da umidade para char[]
-            publicaMqtt(String("umidadeGrupoZ"), String(umidadeChar)); // Publica a umidade no tópico "umidadeGrupoZ"
+            dtostrf(umidade, 6, 3, umidadeChar);
+            
+            // Converte o valor da pressão para char[]
             char pressaoChar[10];
-            dtostrf(pressao, 6, 3, pressaoChar); // Converte o valor da pressão para char[]
-            publicaMqtt(String("pressaoGrupoZ"), String(pressaoChar)); // Publica a pressão no tópico "pressaoGrupoZ"
+            dtostrf(pressao, 6, 3, pressaoChar);
+            
+            // Converte o valor da altitude para char[]
             char altitudeChar[10];
-            dtostrf(altitude, 6, 3, altitudeChar); // Converte o valor da altitude para char[]
-            publicaMqtt(String("altitudeGrupoZ"), String(altitudeChar)); // Publica a altitude no tópico "altitudeGrupoZ"
+            dtostrf(altitude, 6, 3, altitudeChar);
+            
+            mqttClient.publish("GrupoZ_time_temp_umi_press_alt", (String(timeStamp) + ";" + String(temperaturaChar) + ";" + String(umidadeChar) + ";" + String(pressaoChar) + ";" + String(altitudeChar)).c_str()); // Publica os dados no tópico
 
             mqttClient.loop(); // Mantém a conexão com o broker MQTT
         }
