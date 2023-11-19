@@ -398,11 +398,6 @@ bool checaMqtt() {
     return mqttClient.connected(); // Retorna se o ESP32 está conectado no broker MQTT
 }
 
-// Função para publicar os dados no broker MQTT
-void publicaMqtt(String topico, String mensagem) {
-    mqttClient.publish(topico.c_str(), mensagem.c_str()); // Publica a mensagem no tópico
-}
-
 // Função que converte de epoch para DD/MM/AAAA
 String epochToDDMMYYYY(unsigned long epoch, int fuso) {
     unsigned long dataFuso = epoch + fuso; // Soma o fuso horário em segundos ao epoch
@@ -552,7 +547,15 @@ void loop() {
             char altitudeChar[10];
             dtostrf(altitude, 6, 3, altitudeChar);
             
-            mqttClient.publish("GrupoZ_time_temp_umi_press_alt", (String(timeStamp) + ";" + String(temperaturaChar) + ";" + String(umidadeChar) + ";" + String(pressaoChar) + ";" + String(altitudeChar)).c_str()); // Publica os dados no tópico
+            // Publica os dados como uma string formatada no tópico "GrupoZ_time_temp_umi_press_alt"
+            mqttClient.publish("GrupoZ_time_temp_umi_press_alt", (String(timeStamp) + ";" + String(temperaturaChar) + ";" + String(umidadeChar) + ";" + String(pressaoChar) + ";" + String(altitudeChar)).c_str(), true);
+
+            // Publica os dados separadamente nos tópicos "GrupoZ_time", "GrupoZ_temp", "GrupoZ_umi", "GrupoZ_press" e "GrupoZ_alt"
+            mqttClient.publish("GrupoZ_time", String(timeStamp).c_str(), true);
+            mqttClient.publish("GrupoZ_temp", temperaturaChar, true);
+            mqttClient.publish("GrupoZ_umi", umidadeChar, true);
+            mqttClient.publish("GrupoZ_press", pressaoChar, true);
+            mqttClient.publish("GrupoZ_alt", altitudeChar, true);
 
             mqttClient.loop(); // Mantém a conexão com o broker MQTT
         }
