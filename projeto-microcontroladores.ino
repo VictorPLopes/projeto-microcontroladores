@@ -39,7 +39,9 @@ Piracicaba, 2023
 #define BOTAO 5 // Pino do botão de seleção no ESP32 (D5 - GPIO5)
 #define DHT_PINO 4 // Pino do sensor DHT11 no ESP32 (D4 - GPIO4)
 #define LM35_PINO 35 // Pino de leitura analógica do sensor LM35
-#define LED_WIFI 23 //Led que indica se a conexão WiFi foi feita
+#define LED_WIFI 23 // Led que indica se a conexão WiFi foi feita
+#define IRRIGACAO 27 // Pino da irrigação
+#define SEMEADURA 26 // Pino da semeadura
 
 #define LCD_ENDERECO 0x27 // Endereço I2C padrão do LCD
 
@@ -97,6 +99,9 @@ volatile byte modoSelecionado = 1; // 0 = Temperatura, 1 = Umidade, 2 = Pressão
 
 // Variável que armazena o tempo da última interrupção do botão de seleção de modo
 unsigned long tUltInt0 = 0;
+
+// Variável que armazena o tempo da última atualização dos dados
+unsigned long tUltAtualizacao = 0;
 
 // Variáveis que armazenam os valores de temperatura, umidade, pressão e altitude
 float temperatura = 0, // Temperatura em graus Celsius
@@ -345,9 +350,45 @@ bool checaWiFi() {
     return WiFi.status() == WL_CONNECTED; // Retorna se o ESP32 está conectado na rede WiFi
 }
 
+// Função de callback para o recebimento de mensagens no broker MQTT
+void callback(char* topic, byte* payload, unsigned int length) {
+    Serial.print("Mensagem recebida no tópico: ");
+    Serial.println(topic);
+
+    Serial.print("Mensagem: ");
+    for (int i = 0; i < length; i++)
+        Serial.print((char)payload[i]);
+    Serial.println();
+
+    // Controle da mensagem recebida
+    String topico = String(topic); // Converte o tópico recebido para String
+
+    if(topico.equals("GrupoZ_irrigacao")) { // Se a mensagem for para controlar a irrigação
+        if((char)payload[0] == '1') { // Se o payload for igual a 1
+            digitalWrite(IRRIGACAO, HIGH); // Liga a irrigação
+            Serial.println("Irrigação ligada");
+        }
+        else if((char)payload[0] == '0') { // Se o payload for igual a 0
+            digitalWrite(IRRIGACAO, LOW); // Desliga a irrigação
+            Serial.println("Irrigação desligada");
+        }
+    }
+    else if(topico.equals("GrupoZ_semeadura")) { // Se a mensagem for para controlar a semeadura
+        if((char)payload[0] == '1') { // Se o payload for igual a 1
+            digitalWrite(SEMEADURA, HIGH); // Liga a semeadura
+            Serial.println("Semeadura ligada");
+        }
+        else if((char)payload[0] == '0') { // Se o payload for igual a 0
+            digitalWrite(SEMEADURA, LOW); // Desliga a semeadura
+            Serial.println("Semeadura desligada");
+        }
+    }
+}
+
 // Função para conectar no broker MQTT
 bool conectaMqtt(String endereco, int porta, String id) {
     mqttClient.setServer(endereco.c_str(), porta); // Configura o endereço e a porta do broker MQTT
+    mqttClient.setCallback(callback); // Configura a função de callback para o recebimento de mensagens no broker MQTT
     return mqttClient.connect(id.c_str()); // Conecta no broker MQTT
 }
 
@@ -520,49 +561,54 @@ void setup() {
 
 // Função que executa o loop principal do programa
 void loop() {
-	// Medições
-	medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
-	medeUmidade(); // Atualiza o valor da umidade
-	medePressaoAltitude(); // Atualiza o valor da pressão
+    // Verifica se já passou 1 segundo desde a última atualização
+    unsigned long tAtual = millis(); // Armazena o tempo atual em milissegundos
+    if (tAtual - tUltAtualizacao > 1000) { // Verifica se o tempo desde a última atualização do LCD é maior que 1 segundo
+        tUltAtualizacao = millis(); // Atualiza o tempo da última atualização do LCD
 
-	// Rede
-    if (checaWiFi()) { // Verifica se o ESP32 está conectado na rede WiFi
-        checaTimeStamp(); // Verifica o horário no servidor NTP
-        if (checaMqtt()) { // Verifica se o ESP32 está conectado no broker MQTT
-            Serial.println("Publicando dados no broker MQTT...");
+        // Medições
+        medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
+        medeUmidade(); // Atualiza o valor da umidade
+        medePressaoAltitude(); // Atualiza o valor da pressão
 
-            // Converte o valor da temperatura para char[]
-            char temperaturaChar[10];
-            dtostrf(temperatura, 6, 3, temperaturaChar);
+        // Rede
+        if (checaWiFi()) { // Verifica se o ESP32 está conectado na rede WiFi
+            checaTimeStamp(); // Verifica o horário no servidor NTP
+            if (checaMqtt()) { // Verifica se o ESP32 está conectado no broker MQTT
+                Serial.println("Publicando dados no broker MQTT...");
 
-            // Converte o valor da umidade para char[]
-            char umidadeChar[10];
-            dtostrf(umidade, 6, 3, umidadeChar);
-            
-            // Converte o valor da pressão para char[]
-            char pressaoChar[10];
-            dtostrf(pressao, 6, 3, pressaoChar);
-            
-            // Converte o valor da altitude para char[]
-            char altitudeChar[10];
-            dtostrf(altitude, 6, 3, altitudeChar);
-            
-            // Publica os dados como uma string formatada no tópico "GrupoZ_time_temp_umi_press_alt"
-            mqttClient.publish("GrupoZ_time_temp_umi_press_alt", (String(timeStamp) + ";" + String(temperaturaChar) + ";" + String(umidadeChar) + ";" + String(pressaoChar) + ";" + String(altitudeChar)).c_str(), true);
+                // Converte o valor da temperatura para char[]
+                char temperaturaChar[10];
+                dtostrf(temperatura, 6, 3, temperaturaChar);
 
-            // Publica os dados separadamente nos tópicos "GrupoZ_time", "GrupoZ_temp", "GrupoZ_umi", "GrupoZ_press" e "GrupoZ_alt"
-            mqttClient.publish("GrupoZ_time", String(timeStamp).c_str(), true);
-            mqttClient.publish("GrupoZ_temp", temperaturaChar, true);
-            mqttClient.publish("GrupoZ_umi", umidadeChar, true);
-            mqttClient.publish("GrupoZ_press", pressaoChar, true);
-            mqttClient.publish("GrupoZ_alt", altitudeChar, true);
+                // Converte o valor da umidade para char[]
+                char umidadeChar[10];
+                dtostrf(umidade, 6, 3, umidadeChar);
+                
+                // Converte o valor da pressão para char[]
+                char pressaoChar[10];
+                dtostrf(pressao, 6, 3, pressaoChar);
+                
+                // Converte o valor da altitude para char[]
+                char altitudeChar[10];
+                dtostrf(altitude, 6, 3, altitudeChar);
+                
+                // Publica os dados como uma string formatada no tópico "GrupoZ_time_temp_umi_press_alt"
+                mqttClient.publish("GrupoZ_time_temp_umi_press_alt", (String(timeStamp) + ";" + String(temperaturaChar) + ";" + String(umidadeChar) + ";" + String(pressaoChar) + ";" + String(altitudeChar)).c_str(), true);
 
-            Serial.println("Dados publicados no broker MQTT com sucesso!");
+                // Publica os dados separadamente nos tópicos "GrupoZ_time", "GrupoZ_temp", "GrupoZ_umi", "GrupoZ_press" e "GrupoZ_alt"
+                mqttClient.publish("GrupoZ_time", String(timeStamp).c_str(), true);
+                mqttClient.publish("GrupoZ_temp", temperaturaChar, true);
+                mqttClient.publish("GrupoZ_umi", umidadeChar, true);
+                mqttClient.publish("GrupoZ_press", pressaoChar, true);
+                mqttClient.publish("GrupoZ_alt", altitudeChar, true);
 
-            mqttClient.loop(); // Mantém a conexão com o broker MQTT
+                Serial.println("Dados publicados no broker MQTT com sucesso!");
+
+                mqttClient.loop(); // Mantém a conexão com o broker MQTT
+            }
         }
     }
     
     escreveLCD(); // Escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
-    delay(1000); // Delay de 1 segundo
 }
