@@ -58,7 +58,7 @@ const float pressaoMar = 1013.25; // Pressão atmosférica ao nível do mar em
 const float vDiodosGlobal = 0.45; // Tensão nos diodos do ESP32
 
 // Constantes para configurar a conexão WiFi
-const String ssid = "WiFi_Victor"; // Nome da rede WiFi
+const String ssid = "WiFi_GrupoZ"; // Nome da rede WiFi
 const String password = "12345678"; // Senha da rede WiFi
 
 // Constantes para configurar a conexão com o servidor NTP
