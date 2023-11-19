@@ -565,7 +565,7 @@ void loop() {
     // Verifica se já passou 1 segundo desde a última atualização
     unsigned long tAtual = millis(); // Armazena o tempo atual em milissegundos
     if (tAtual - tUltAtualizacao > 1000) { // Verifica se o tempo desde a última atualização do LCD é maior que 1 segundo
-        tUltAtualizacao = millis(); // Atualiza o tempo da última atualização do LCD
+        tUltAtualizacao = tAtual; // Atualiza o tempo da última atualização do LCD
 
         // Medições
         medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
