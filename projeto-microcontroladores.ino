@@ -579,7 +579,7 @@ void loop() {
     if (tAtual - tUltAtualizacao > 1000) { // Verifica se o tempo desde a última atualização do LCD é maior que 1 segundo
         tUltAtualizacao = tAtual; // Atualiza o tempo da última atualização do LCD
 
-        Serial.println("\n--------------------------------------------------------------------------------\nMEDIÇÕES:\n");
+        Serial.println("\n--------------------------------------------------------------------------------\n\nMEDIÇÕES:");
 
         // Medições
         medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
@@ -592,7 +592,7 @@ void loop() {
         if (checaWiFi()) { // Verifica se o ESP32 está conectado na rede WiFi
             checaTimeStamp(); // Verifica o horário no servidor NTP
             if (checaMqtt()) { // Verifica se o ESP32 está conectado no broker MQTT
-                Serial.println("Publicando dados no broker MQTT...");
+                Serial.println("\nMQTT:\nPublicando dados no broker MQTT...");
 
                 // Converte o valor da temperatura para char[]
                 char temperaturaChar[10];
