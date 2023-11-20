@@ -510,6 +510,12 @@ void checaTimeStamp() {
 void setup() {
     // Configuração dos pinos como entrada ou saída
     pinMode(BOTAO, INPUT_PULLUP);
+    pinMode(LED_WIFI, OUTPUT);
+    digitalWrite(LED_WIFI, LOW);
+    pinMode(SEMEADURA, OUTPUT);
+    digitalWrite(SEMEADURA, LOW);
+    pinMode(IRRIGACAO, OUTPUT);
+    digitalWrite(IRRIGACAO, LOW);
 
     // Inicializa a USART
     Serial.begin(9600);
@@ -521,10 +527,6 @@ void setup() {
     lcd.backlight(); // Liga o backlight do LCD
     lcd.createChar(POS_GRAUS, graus); // Cria o caractere de graus (°) no LCD
     lcd.createChar(POS_ATIL, aTil); // Cria o caractere de a com til (ã) no LCD
-
-    // Configuração da conexão WiFi
-    pinMode(LED_WIFI, OUTPUT);
-    digitalWrite(LED_WIFI, LOW);
 
     //Inicializa WiFi
     Serial.println("Inicializando WiFi...");
