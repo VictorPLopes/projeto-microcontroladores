@@ -140,7 +140,7 @@ void medeUmidade() {
     float tempAux = dht.readTemperature(); // Lê a temperatura em °C do sensor DHT11
 
     while (isnan(umiAux) || isnan(tempAux)) { // Verifica se houve erro na leitura do sensor DHT11
-        Serial.println("Erro na leitura do DHT11");
+        Serial.println("Erro na leitura do DHT11!");
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Erro no DHT11!");
@@ -151,9 +151,9 @@ void medeUmidade() {
     }
     umidade = umiAux; // Atualiza o valor da umidade
 
-    Serial.print("Umidade (Ur%) = "); // Imprime o valor da umidade no monitor serial
+    Serial.print("Umidade (Ur%) - DHT11 = "); // Imprime o valor da umidade no monitor serial
     Serial.println(umidade);
-    Serial.print("Temperatura - DHT11 (°C) = "); // Imprime o valor da temperatura no monitor serial
+    Serial.print("Temperatura (°C) - DHT11 = "); // Imprime o valor da temperatura no monitor serial
     Serial.println(tempAux);
 }
 
@@ -164,7 +164,7 @@ void medePressaoAltitude() {
     float tempAux = bmp.readTemperature(); // Lê a temperatura em °C do sensor BMP280
 
     while (isnan(pressaoAux) || isnan(altitudeAux) || isnan(tempAux)) { // Verifica se houve erro na leitura do sensor BMP280
-        Serial.println("Erro na leitura do BMP280");
+        Serial.println("Erro na leitura do BMP280!");
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Erro no BMP280!");
@@ -178,11 +178,11 @@ void medePressaoAltitude() {
     pressao = pressaoAux; // Atualiza o valor da pressão
     altitude = altitudeAux; // Atualiza o valor da altitude
 
-    Serial.print("Pressão (hPa) = "); // Imprime o valor da pressão no monitor serial
+    Serial.print("Pressão (hPa) - BMP280 = "); // Imprime o valor da pressão no monitor serial
     Serial.println(pressao);
-    Serial.print("Altitude - BMP (m) = "); // Imprime o valor da altitude no monitor serial
+    Serial.print("Altitude (m) - BMP280 = "); // Imprime o valor da altitude no monitor serial
     Serial.println(altitudeAux);
-    Serial.print("Temperatura - BMP280 (°C) = "); // Imprime o valor da temperatura no monitor serial
+    Serial.print("Temperatura (°C) - BMP280 = "); // Imprime o valor da temperatura no monitor serial
     Serial.println(tempAux);
 }
 
@@ -204,17 +204,17 @@ void medeTemperatura(float vDiodos, int nMedidas) { // vDiodos é a tensão nos 
     // Media das leituras
     double nMedia = n/nMedidas; // Valor médio das leituras
 
-    Serial.print("Valor de n (leitura analógica):"); // Imprime o valor de n no monitor serial
+    Serial.print("Valor de n (leitura analógica) do LM35:"); // Imprime o valor de n no monitor serial
     Serial.println(nMedia);
 
     // Calcula a tensão
     double tensao = calculaTensao(nMedia); // Calcula a tensão a partir do valor médio das leituras, considerando o ajuste linear
-    Serial.print("Tensão (leitura analógica):"); // Imprime o valor da tensão no monitor serial
+    Serial.print("Tensão (leitura analógica) no LM35:"); // Imprime o valor da tensão no monitor serial
     Serial.println(tensao);
 
     // Calcula a temperatura
     double tempAux = (tensao - vDiodos) / 0.01; // Tensão de saída do LM35 = 10 mV/°C
-    Serial.print("Temperatura - LM35 (°C) = "); // Imprime o valor da temperatura no monitor serial
+    Serial.print("Temperatura (°C) - LM35 = "); // Imprime o valor da temperatura no monitor serial
     Serial.println(tempAux);
 
 
@@ -307,7 +307,7 @@ void iniciaWiFi() {
     lcd.setCursor(0, 1);
     lcd.print("...");
 
-    Serial.println("Conectando na rede WiFi...");
+    Serial.println("        Conectando na rede WiFi...");
     Serial.println(ssid);
 
     conectaWiFi(ssid, password); // Conecta na rede WiFi
@@ -316,7 +316,7 @@ void iniciaWiFi() {
     while ((WiFi.status() != WL_CONNECTED) && ((millis() - t0) < 15000)) // Verifica se o ESP32 está conectado na rede WiFi ou se o tempo desde o início da conexão é maior que 30 segundos
         Serial.print('.');
     if (WiFi.status() != WL_CONNECTED) { // Se o ESP32 não estiver conectado na rede WiFi após 30 segundos
-        Serial.println("\nFalha na conexão WiFi");
+        Serial.println("\n    Falha na conexão WiFi");
 
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -325,7 +325,7 @@ void iniciaWiFi() {
         delay(2000);
     }
     else {
-        Serial.print("\nConectado na rede WiFi ");
+        Serial.print("\n    Conectado na rede WiFi!");
         Serial.println(WiFi.localIP()); // Imprime o endereço IP do ESP32 no monitor serial
 
         digitalWrite(LED_WIFI, HIGH); // Acende o LED que indica que o ESP32 está conectado na rede WiFi
@@ -401,7 +401,7 @@ void iniciaMqtt() {
     lcd.setCursor(0, 1);
     lcd.print("...");
 
-    Serial.println("Conectando no broker MQTT...");
+    Serial.println("        Conectando no Broker MQTT...");
     Serial.println(brokerMqtt);
 
     unsigned long t0 = millis(); // Armazena o tempo atual em milissegundos
@@ -409,7 +409,7 @@ void iniciaMqtt() {
         Serial.print('.');
     }
     if (!mqttClient.connected()) { // Se o ESP32 não estiver conectado no broker MQTT após 15 segundos
-        Serial.println("\nFalha na conexão MQTT");
+        Serial.println("\n    Falha na conexão ao Broker MQTT!");
 
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -420,7 +420,7 @@ void iniciaMqtt() {
         delay(2000);
     }
     else {
-        Serial.println("\nConectado no broker MQTT");
+        Serial.println("\n    Conectado ao broker MQTT!");
 
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -457,25 +457,14 @@ void checaTimeStamp() {
     timeClient.update(); // Obtém o horário do servidor NTP
     timeStamp = timeClient.getEpochTime(); // Quando for converter o timeStamp para data e horário no Python, precisa somar 10800 para ajustar o fuso
 
-    Serial.println("\n--------------------------------------------------------------------------------");
-
-
-    Serial.print("HORARIO: ");
+    Serial.print("Hora: ");
     Serial.println(timeClient.getFormattedTime());
+    Serial.print(" GMT-3");
 
-    Serial.print("HORA: ");
-    Serial.println(timeClient.getHours());
-
-    Serial.print("MINUTOS: ");
-    Serial.println(timeClient.getMinutes());
-
-    Serial.print("SEGUNDOS: ");
-    Serial.println(timeClient.getSeconds());
-
-    Serial.print("DATA: ");
+    Serial.print("Data (DD/MM/AAAA): ");
     Serial.println(epochToDDMMYYYY(timeStamp, gmt_menos3));
 
-    Serial.print("DIA DA SEMANA: ");
+    Serial.print("Dia da Semana: ");
     byte dia = timeClient.getDay();
     switch (dia) {
         case 0:
@@ -508,7 +497,14 @@ void checaTimeStamp() {
 
 // Função que inicializa o ESP32
 void setup() {
+    // Inicializa a USART
+    Serial.begin(9600);
+    Serial.flush(); // Limpa o buffer da USART
+
+    Serial.println("INICIALIZANDO SISTEMA...");
+
     // Configuração dos pinos como entrada ou saída
+    Serial.println("    Inicializando pinos...");
     pinMode(BOTAO, INPUT_PULLUP);
     pinMode(LED_WIFI, OUTPUT);
     digitalWrite(LED_WIFI, LOW);
@@ -516,54 +512,64 @@ void setup() {
     digitalWrite(SEMEADURA, LOW);
     pinMode(IRRIGACAO, OUTPUT);
     digitalWrite(IRRIGACAO, LOW);
+    Serial.println("    Pinos inicializados!\n");
 
-    // Inicializa a USART
-    Serial.begin(9600);
-    Serial.flush(); // Limpa o buffer da USART
-    
     // Configuração do display LCD
-    Serial.println("Inicializando LCD...");
+    Serial.println("    Inicializando LCD...");
     lcd.init(); // Inicialização do LCD
     lcd.backlight(); // Liga o backlight do LCD
     lcd.createChar(POS_GRAUS, graus); // Cria o caractere de graus (°) no LCD
     lcd.createChar(POS_ATIL, aTil); // Cria o caractere de a com til (ã) no LCD
+    Serial.println("    LCD inicializado!\n");
 
     //Inicializa WiFi
-    Serial.println("Inicializando WiFi...");
+    Serial.println("    Inicializando Wi-Fi...");
     iniciaWiFi();
 
     //Inicializa conexão servidor NTP
     if (WiFi.status() == WL_CONNECTED) { // Se o ESP32 estiver conectado na rede WiFi
+        Serial.println("    Wi-Fi inicializado!\n");
         // Configuração para acessar o horário no servidor utilizando o protocolo NTP
-        Serial.println("Inicializando conexão com servidor NTP...");
+        Serial.println("    Inicializando conexão com servidor NTP...");
         timeClient.begin();
         timeClient.setTimeOffset(gmt_menos3); //Correção do fuso horário para o horário de Brasilia
         ntpStatus = true;
+        Serial.println("    Conexão com servidor NTP inicializada!\n");
         
         // Configuração da conexão com o broker MQTT
-        Serial.println("Inicializando MQTT...");
+        Serial.println("    Inicializando conexão com o Broker MQTT...");
         iniciaMqtt();
         mqttClient.subscribe("GrupoZ_irrigacao"); // Inscreve o ESP32 no tópico "GrupoZ_irrigacao"
         mqttClient.subscribe("GrupoZ_semeadura"); // Inscreve o ESP32 no tópico "GrupoZ_semeadura"
+        Serial.println("    Conexão com o Broker MQTT inicializada!\n");
     }
 
+    Serial.println("    Inicializando sensores...");
+
     // Configuração do sensor DHT11
-    Serial.println("Inicializando DHT11...");
+    Serial.println("        Inicializando sensor DHT11...");
     dht.begin();
+    Serial.println("        Sensor DHT11 inicializado!\n");
     
     // Configuração do sensor BMP280
-    Serial.println("Inicializando BMP280...");
+    Serial.println("        Inicializando sensor BMP280...");
     while(!bmp.begin(BMP280_ADDRESS_ALT)) { // Verifica se o sensor BMP280 foi encontrado
-        Serial.println("Sensor não localizado");
+        Serial.println("        Sensor BMP280 não localizado!\n");
         lcd.setCursor(0, 0);
         lcd.print("Erro no BMP280!");
     }
+    Serial.println("        Sensor BMP280 inicializado!\n");
     lcd.clear(); // Limpa o LCD, para os casos em que houve erro na inicialização do BMP280
     lcd.setCursor(0, 0); // Posiciona o cursor na primeira coluna da primeira linha
 
+    Serial.println("    Sensores inicializados!\n");
+
+    Serial.println("    Inicializando interrupção do botão de seleção de modo...");
     // Configuração da interrupção do botão de seleção de modo
     attachInterrupt(digitalPinToInterrupt(BOTAO), selecionaModo, FALLING);
+    Serial.println("    Interrupção do botão de seleção de modo inicializada!\n");
 
+    Serial.println("SISTEMA INICIALIZADO!\n");
 }
 
 // Função que executa o loop principal do programa
@@ -573,12 +579,16 @@ void loop() {
     if (tAtual - tUltAtualizacao > 1000) { // Verifica se o tempo desde a última atualização do LCD é maior que 1 segundo
         tUltAtualizacao = tAtual; // Atualiza o tempo da última atualização do LCD
 
+        Serial.println("\n--------------------------------------------------------------------------------\nMEDIÇÕES:\n");
+
         // Medições
         medeTemperatura(vDiodosGlobal, 10); // Atualiza o valor da temperatura
         medeUmidade(); // Atualiza o valor da umidade
         medePressaoAltitude(); // Atualiza o valor da pressão
+        Serial.println();
 
         // Rede
+        Serial.println("REDE E HORÁRIO:");
         if (checaWiFi()) { // Verifica se o ESP32 está conectado na rede WiFi
             checaTimeStamp(); // Verifica o horário no servidor NTP
             if (checaMqtt()) { // Verifica se o ESP32 está conectado no broker MQTT
@@ -616,6 +626,8 @@ void loop() {
             }
         }
     }
-    
+
+    Serial.println("\nSTATUS:\nAtualizando LCD...");
     escreveLCD(); // Escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
+    Serial.println("LCD atualizado!\n");    
 }
