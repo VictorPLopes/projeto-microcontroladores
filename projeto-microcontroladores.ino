@@ -532,13 +532,17 @@ void setup() {
 
     //Inicializa conexão servidor NTP
     if (WiFi.status() == WL_CONNECTED) { // Se o ESP32 estiver conectado na rede WiFi
+        // Configuração para acessar o horário no servidor utilizando o protocolo NTP
         Serial.println("Inicializando conexão com servidor NTP...");
         timeClient.begin();
         timeClient.setTimeOffset(gmt_menos3); //Correção do fuso horário para o horário de Brasilia
         ntpStatus = true;
         
+        // Configuração da conexão com o broker MQTT
         Serial.println("Inicializando MQTT...");
         iniciaMqtt();
+        mqttClient.subscribe("GrupoZ_irrigacao"); // Inscreve o ESP32 no tópico "GrupoZ_irrigacao"
+        mqttClient.subscribe("GrupoZ_semeadura"); // Inscreve o ESP32 no tópico "GrupoZ_semeadura"
     }
 
     // Configuração do sensor DHT11
