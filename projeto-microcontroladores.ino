@@ -353,10 +353,10 @@ bool checaWiFi() {
 
 // Função de callback para o recebimento de mensagens no broker MQTT
 void callback(char* topic, byte* payload, unsigned int length) {
-    Serial.print("Mensagem recebida no tópico: ");
+    Serial.print("MQTT - Mensagem recebida no tópico: ");
     Serial.println(topic);
 
-    Serial.print("Mensagem: ");
+    Serial.print("    Mensagem: ");
     for (int i = 0; i < length; i++)
         Serial.print((char)payload[i]);
     Serial.println();
@@ -458,7 +458,7 @@ void checaTimeStamp() {
     timeStamp = timeClient.getEpochTime(); // Quando for converter o timeStamp para data e horário no Python, precisa somar 10800 para ajustar o fuso
 
     Serial.print("Hora: ");
-    Serial.println(timeClient.getFormattedTime());
+    Serial.print(timeClient.getFormattedTime());
     Serial.print(" GMT-3");
 
     Serial.print("Data (DD/MM/AAAA): ");
@@ -627,7 +627,5 @@ void loop() {
         }
     }
 
-    Serial.println("\nSTATUS:\nAtualizando LCD...");
     escreveLCD(); // Escreve os valores de temperatura, umidade e pressão no LCD conforme o modo selecionado
-    Serial.println("LCD atualizado!\n");    
 }
