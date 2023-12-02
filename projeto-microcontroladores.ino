@@ -11,7 +11,7 @@ Autores:
     - Victor Probio Lopes | victor.probio@aluno.ifsp.edu.br
 
 Trabalho entregue ao professor Dr. Pablo Rodrigo de Souza, pertencente à disciplina "Microcontroladores"
-com o objetivo deprojetar e construir um dispositivo para coleta de variáveis climáticas
+com o objetivo de projetar e construir um dispositivo para coleta de variáveis climáticas
 para agricultura de pressão utilizando o microcontrolador ESP32.
 
 Piracicaba, 2023
