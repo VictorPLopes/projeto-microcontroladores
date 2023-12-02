@@ -325,7 +325,7 @@ void iniciaWiFi() {
         delay(2000);
     }
     else {
-        Serial.print("\n    Conectado na rede WiFi!");
+        Serial.print("\n    Conectado na rede WiFi: ");
         Serial.println(WiFi.localIP()); // Imprime o endereço IP do ESP32 no monitor serial
 
         digitalWrite(LED_WIFI, HIGH); // Acende o LED que indica que o ESP32 está conectado na rede WiFi
